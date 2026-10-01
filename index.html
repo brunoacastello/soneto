@@ -36,6 +36,8 @@ button,input,textarea{font-family:inherit}
 #topbar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
   padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 8px;pointer-events:none;color:var(--ink)}
 #topbar>*{pointer-events:auto}
+#topbar::before{content:'';position:absolute;top:0;left:0;right:0;bottom:-20px;z-index:-1;pointer-events:none;
+  background:linear-gradient(to bottom,var(--bar-bg,var(--bg)) 0%,var(--bar-bg,var(--bg)) 68%,transparent 100%)}
 .iconbtn{width:44px;height:44px;border-radius:50%;border:0;background:var(--btn-bg);color:inherit;display:grid;place-items:center;
   cursor:pointer;text-decoration:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .iconbtn svg,.fab svg,.chip svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -252,7 +254,21 @@ function toast(msg) {
 }
 function fail(msg, e) { console.error(e); toast(msg); }
 
+/* a faixa do topo acompanha a cor do poema que está passando por baixo dela */
+let barTick = false;
+function updateBar() {
+  barTick = false;
+  if (!document.documentElement.classList.contains('snap')) return;
+  const y = 60;
+  for (const el of document.querySelectorAll('.poem')) {
+    const r = el.getBoundingClientRect();
+    if (r.top <= y && r.bottom > y) { app.style.setProperty('--bar-bg', el.style.getPropertyValue('--pbg')); return; }
+  }
+}
+window.addEventListener('scroll', () => { if (!barTick) { barTick = true; requestAnimationFrame(updateBar); } }, { passive: true });
+
 function theme(c) {
+  app.style.setProperty('--bar-bg', c.bg);
   app.style.setProperty('--bg', c.bg);
   app.style.setProperty('--ink', c.fg);
   app.style.setProperty('--btn-bg', c.dark ? 'rgba(0,0,0,.28)' : 'rgba(255,255,255,.55)');
@@ -350,6 +366,7 @@ async function viewFeed(id, form) {
   list = shuffle(list);
   theme(comboOf(list[0].color));
   view.innerHTML = list.map(sectionHTML).join('');
+  updateBar();
 }
 
 async function viewRandom(id) {
