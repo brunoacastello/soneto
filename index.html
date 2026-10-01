@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Soneto</title>
 <meta name="description" content="Soneto: um lugar para ler e publicar poemas.">
+<meta property="og:title" content="Soneto">
+<meta property="og:description" content="Um lugar para ler e publicar poemas.">
+<meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%92%EF%B8%8F%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -105,6 +108,19 @@ textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:
 .chip{display:inline-flex;align-items:center;gap:.4rem;border:1.5px solid currentColor;border-radius:999px;padding:.4rem .9rem;background:transparent;color:inherit;
   font-weight:600;font-size:.85rem;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;text-decoration:none}
 .chip svg{width:16px;height:16px}
+.p-title a,.p-meta a{color:inherit;text-decoration:none}
+.p-title a:hover,.p-meta a:hover{text-decoration:underline;text-underline-offset:4px}
+.actions{display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center;margin-top:1.8rem}
+.actions .chip{font-size:.78rem;padding:.45rem .85rem}
+.foot{margin-top:2.6rem;text-align:center;font-size:.85rem;opacity:.75}
+.foot a{color:inherit}
+.doc{max-width:38rem;margin:0 auto;line-height:1.65;font-size:1.05rem}
+.doc h1{margin:0 0 .4rem;font-size:1.9rem;font-weight:600;text-align:center}
+.doc h2{margin:2.2rem 0 .5rem;font-size:1.2rem;font-weight:600}
+.doc p{margin:.6rem 0}
+.doc .upd{text-align:center;opacity:.75;margin-bottom:1.6rem}
+.doc a{color:inherit}
+.notice{max-width:28rem;margin:1.2rem auto 0;text-align:center;font-size:.9rem;opacity:.85}
 
 /* ---------- criar poema ---------- */
 .create{min-height:100%;padding:5.4rem 1.4rem 11rem;display:flex;flex-direction:column;align-items:center;background:var(--bg);color:var(--ink)}
@@ -137,6 +153,7 @@ textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:
   box-shadow:0 4px 16px rgba(0,0,0,.07);opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}
 .menu-open #menu{opacity:1;transform:none;pointer-events:auto}
 #menu a{display:block;padding:.6rem 1rem;border-radius:12px;color:inherit;text-decoration:none;font-size:1.05rem;letter-spacing:.03em}
+#menu a.small{font-size:.85rem;opacity:.75;margin-top:.2rem}
 #menu a:active{background:color-mix(in srgb,var(--m-ink,#1b365d) 10%,transparent)}
 
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 100px);z-index:70;max-width:86vw;
@@ -155,6 +172,7 @@ textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:
     <a href="#/explorar" data-act="menu-close">Explorar</a>
     <a href="#/aleatorio" data-act="menu-close">Aleatório</a>
     <a href="#/procurar" data-act="menu-close">Procurar</a>
+    <a class="small" href="#/termos" data-act="menu-close">Termos de uso</a>
   </nav>
 </div>
 <div id="toast" role="status"></div>
@@ -167,6 +185,7 @@ textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:
 /* ================= configuração ================= */
 const SUPABASE_URL = 'https://prmhbjubcdbxnuxxaxgy.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_86pn0hWnXJOlUslDUDb2_w_YA5vPQud'; // chave pública: pode ficar no código
+const CONTACT_EMAIL = ''; // coloque aqui o e-mail de contato (aparece nos Termos de uso)
 const GOOGLE_ENABLED = false; // mude para true depois de configurar o login com Google no Supabase
 
 if (!window.supabase) {
@@ -208,6 +227,7 @@ const RESERVED = new Set(['soneto','admin','suporte','entrar','novo','explorar',
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const enc = encodeURIComponent;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const dec = s => { try { return decodeURIComponent(s || ''); } catch (e) { return s || ''; } };
 const norm = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const countV = t => t.split('\n').map(s => s.trim()).filter(Boolean).length;
@@ -275,10 +295,10 @@ function theme(c) {
   document.documentElement.style.setProperty('--page-bg', c.bg);
 }
 
-function chrome(mode, showFab) {
+function chrome(mode, showFab, label) {
   const prof = me && me.display_name ? '#/u/' + enc(me.username) : (session ? '#/bem-vindo' : '#/entrar');
   topbar.innerHTML = mode === 'create'
-    ? `<button class="iconbtn" data-act="close-create" aria-label="Fechar">${ICON.x}</button><span></span><button class="pub" id="pubBtn" data-act="publish" disabled>Publicar</button>`
+    ? `<button class="iconbtn" data-act="close-create" aria-label="Fechar">${ICON.x}</button><span></span><button class="pub" id="pubBtn" data-act="publish" disabled>${esc(label || 'Publicar')}</button>`
     : `<button class="iconbtn" data-act="menu-toggle" aria-label="Menu">${ICON.menu}</button><a class="wordmark" href="#/">soneto</a><a class="iconbtn" href="${prof}" aria-label="Minha página">${ICON.user}</a>`;
   fab.hidden = !showFab;
 }
@@ -332,22 +352,50 @@ function sentByHTML(p) {
     : p.submitter ? `<a class="inl" href="#/u/${enc(p.submitter.username)}">@${esc(p.submitter.username)}</a>` : 'um usuário';
   return `<div class="p-sent">Enviado por ${who} · <button class="linklike" data-act="report" data-id="${esc(p.id)}">Denunciar autoria</button></div>`;
 }
+function footHTML() {
+  return '<div class="foot"><a href="#/termos">Termos de uso e privacidade</a></div>';
+}
+function poemURL(id) { return location.origin + location.pathname + '#/p/' + id; }
+function shareText(p) {
+  const by = p.author ? p.author.name : (p.owner ? (p.owner.display_name || '@' + p.owner.username) : '');
+  return (p.title || 'Um poema') + (by ? ' por ' + by : '');
+}
+function shareHTML(p) {
+  const wa = 'https://wa.me/?text=' + enc(shareText(p) + '\n' + poemURL(p.id));
+  const id = esc(p.id);
+  return '<div class="actions">'
+    + `<a class="chip" href="${wa}" target="_blank" rel="noopener">WhatsApp</a>`
+    + `<button class="chip" data-act="share" data-id="${id}">Compartilhar</button>`
+    + `<button class="chip" data-act="share-img" data-id="${id}">Imagem para stories</button>`
+    + `<button class="chip" data-act="copy-link" data-id="${id}">Copiar link</button>`
+    + '</div>';
+}
 function articleHTML(p, o) {
   o = o || {};
   const f = formOf(p.form);
   const canDel = o.tools && me && (p.user_id === me.id || p.submitted_by === me.id);
+  const canEdit = o.tools && me && !p.author && p.user_id === me.id;
+  const href = '#/p/' + enc(p.id);
+  const linkIt = o.link !== false;
+  const metaTxt = `${esc(f.name)} · ${fmtDate(new Date(p.created_at))}`;
   return '<article>'
-    + (p.title ? `<h2 class="p-title">${esc(p.title)}</h2>` : '')
+    + (p.title ? `<h2 class="p-title">${linkIt ? `<a href="${href}">${esc(p.title)}</a>` : esc(p.title)}</h2>` : '')
     + (o.byline ? bylineHTML(p) : '')
     + `<div class="p-body">${esc(p.body)}</div>`
-    + `<div class="p-meta">${esc(f.name)} · ${fmtDate(new Date(p.created_at))}</div>`
+    + `<div class="p-meta">${linkIt && !p.title ? `<a href="${href}">${metaTxt}</a>` : metaTxt}</div>`
     + sentByHTML(p)
-    + (canDel ? `<div class="p-sent"><button class="linklike" data-act="del" data-id="${esc(p.id)}">Apagar</button></div>` : '')
+    + ((canEdit || canDel) ? '<div class="p-sent">'
+        + (canEdit ? `<a class="inl" href="#/editar/${enc(p.id)}">Editar</a>` : '')
+        + (canEdit && canDel ? ' · ' : '')
+        + (canDel ? `<button class="linklike" data-act="del" data-id="${esc(p.id)}">Apagar</button>` : '')
+        + '</div>' : '')
+    + (o.share ? shareHTML(p) : '')
+    + (o.foot ? footHTML() : '')
     + '</article>';
 }
-function sectionHTML(p) {
+function sectionHTML(p, foot) {
   const c = comboOf(p.color);
-  return `<section class="poem" style="--pbg:${c.bg};--pfg:${c.fg}">${articleHTML(p, {byline:true})}</section>`;
+  return `<section class="poem" style="--pbg:${c.bg};--pfg:${c.fg}">${articleHTML(p, {byline:true, foot:!!foot})}</section>`;
 }
 function emptyFeed(msg) {
   theme(COMBOS[0]); chrome('default', true);
@@ -365,7 +413,7 @@ async function viewFeed(id, form) {
   if (!list.length) return emptyFeed(form ? 'Nenhum poema nessa forma ainda.' : 'Ainda não há poemas por aqui.<br>Que tal ser a primeira pessoa a publicar?');
   list = shuffle(list);
   theme(comboOf(list[0].color));
-  view.innerHTML = list.map(sectionHTML).join('');
+  view.innerHTML = list.map((p, i) => sectionHTML(p, i === list.length - 1)).join('');
   updateBar();
 }
 
@@ -380,13 +428,13 @@ async function viewRandom(id) {
   const p = pool[Math.floor(Math.random() * pool.length)];
   lastRandomId = p.id;
   theme(comboOf(p.color));
-  view.innerHTML = sectionHTML(p) + '<button class="again" data-act="another">Outro poema</button>';
+  view.innerHTML = sectionHTML(p, true) + '<button class="again" data-act="another">Outro poema</button>';
   window.scrollTo(0, 0);
 }
 
 function authorRows(list) {
   return list.map(a => {
-    const yrs = (a.birth_year || '') + (a.death_year ? '–' + a.death_year : '');
+    const yrs = (a.birth_year || '') + (a.death_year ? ' a ' + a.death_year : '');
     return `<a href="#/a/${enc(a.slug)}"><span>${esc(a.name)}${seal(a.kind)}<br><small>${esc(yrs)}</small></span><small>autor</small></a>`;
   }).join('');
 }
@@ -458,6 +506,7 @@ async function viewProfile(id, uname, quiet) {
     </header>
     ${poems.map(p => `<div class="pp">${articleHTML(p, {tools:true})}</div>`).join('')
       || `<p class="empty" style="margin-top:3rem">${mine ? 'Você ainda não publicou nenhum poema.<br>Toque no + para escrever o primeiro.' : 'Ainda sem poemas.'}</p>`}
+    ${footHTML()}
   </div>`;
 }
 
@@ -473,7 +522,7 @@ async function viewAuthor(id, slug, quiet) {
   if (!author) return notFound('Esse autor não foi encontrado.');
   const pd = author.kind === 'dominio_publico';
   theme(comboOf(pd ? 'manteiga' : 'azul'));
-  const yrs = (author.birth_year || '') + (author.death_year ? ' – ' + author.death_year : '');
+  const yrs = (author.birth_year || '') + (author.death_year ? ' a ' + author.death_year : '');
   const n = poems.length;
   view.innerHTML = `<div class="page"><header class="ph">
       <h1>${esc(author.name)}${seal(author.kind, true)}</h1>
@@ -485,6 +534,7 @@ async function viewAuthor(id, slug, quiet) {
     </header>
     ${poems.map(p => `<div class="pp">${articleHTML(p, {tools:true})}</div>`).join('')
       || '<p class="empty" style="margin-top:3rem">Ainda sem poemas. Contribua com o primeiro.</p>'}
+    ${footHTML()}
   </div>`;
 }
 
@@ -498,7 +548,8 @@ function viewAuth() {
     <input class="q" id="pw" type="password" placeholder="Senha" autocomplete="${login ? 'current-password' : 'new-password'}">
     <div class="err" id="err"></div>
     <button class="btn" id="goBtn" data-act="auth-submit">${login ? 'Entrar' : 'Criar conta'}</button>
-    <p class="switch">${login ? 'Ainda não tem conta?' : 'Já tem conta?'} <button class="linklike" data-act="auth-switch">${login ? 'Criar conta' : 'Entrar'}</button></p></div>`;
+    <p class="switch">${login ? 'Ainda não tem conta?' : 'Já tem conta?'} <button class="linklike" data-act="auth-switch">${login ? 'Criar conta' : 'Entrar'}</button></p>
+    <p class="notice">Ao criar uma conta, você concorda com os <a class="inl" href="#/termos">Termos de uso</a>.</p></div>`;
 }
 function trErr(e) {
   const m = String(e && e.message || '').toLowerCase();
@@ -571,6 +622,168 @@ async function doOnboard() {
   } finally { if ($('obBtn')) $('obBtn').disabled = false; }
 }
 
+/* ---------- pagina do poema ---------- */
+let currentPoem = null;
+async function viewPoem(id, pid) {
+  chrome('default', true); theme(COMBOS[0]); loading();
+  let p;
+  try {
+    if (UUID_RE.test(pid || '')) { const l = await fetchPoems(q => q.eq('id', pid).limit(1)); p = l[0]; }
+  } catch (e) { return showError(id, e); }
+  if (id !== navId) return;
+  if (!p) return notFound('Esse poema não foi encontrado.');
+  currentPoem = p;
+  const c = comboOf(p.color);
+  theme(c); chrome('default', true);
+  document.title = (p.title ? p.title + ' · ' : '') + 'Soneto';
+  view.innerHTML = `<section class="poem" style="--pbg:${c.bg};--pfg:${c.fg}">${articleHTML(p, {byline:true, link:false, tools:true, share:true, foot:true})}</section>`;
+}
+
+/* ---------- compartilhar ---------- */
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; }
+  catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (_) {}
+    ta.remove(); return ok;
+  }
+}
+async function doShare(p) {
+  const url = poemURL(p.id);
+  if (navigator.share) {
+    try { await navigator.share({ title: shareText(p), text: shareText(p), url }); }
+    catch (e) { if (e && e.name !== 'AbortError') console.error(e); }
+    return;
+  }
+  toast((await copyText(url)) ? 'Link copiado.' : 'Não consegui copiar o link.');
+}
+async function storyBlob(p) {
+  const W = 1080, H = 1920, PADX = 110, MAXW = W - PADX * 2, TOP = 250, BOTTOM = 250;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  const col = comboOf(p.color);
+  try { await Promise.all([document.fonts.load('400 40px "Zilla Slab"'), document.fonts.load('600 40px "Zilla Slab"')]); } catch (e) {}
+  const fam = '"Zilla Slab", Georgia, serif';
+  g.fillStyle = col.bg; g.fillRect(0, 0, W, H);
+  g.fillStyle = col.fg; g.textBaseline = 'top';
+
+  const wrap = (text, font) => {
+    g.font = font;
+    const out = []; let line = '';
+    for (const w of text.split(/\s+/)) {
+      const t = line ? line + ' ' + w : w;
+      if (!line || g.measureText(t).width <= MAXW) line = t; else { out.push(line); line = w; }
+    }
+    if (line) out.push(line);
+    return out;
+  };
+  const by = p.author ? p.author.name : (p.owner ? (p.owner.display_name || '@' + p.owner.username) : '');
+  const avail = H - TOP - BOTTOM;
+  let size = 50, layout = null;
+  const build = s => {
+    const tSize = Math.round(s * 1.35);
+    const titleLines = p.title ? wrap(p.title, `600 ${tSize}px ${fam}`) : [];
+    const lines = [];
+    for (const raw of p.body.split('\n')) {
+      if (!raw.trim()) lines.push(null); else wrap(raw.trim(), `400 ${s}px ${fam}`).forEach(l => lines.push(l));
+    }
+    const headH = (titleLines.length ? titleLines.length * tSize * 1.25 : 0) + (by ? s * 1.1 : 0) + (titleLines.length || by ? s * 1.6 : 0);
+    const bodyH = lines.reduce((acc, l) => acc + (l === null ? s * 0.9 : s * 1.5), 0);
+    return { s, tSize, titleLines, lines, headH, bodyH, total: headH + bodyH };
+  };
+  for (; size >= 26; size -= 2) { layout = build(size); if (layout.total <= avail) break; }
+  if (layout.total > avail) {
+    while (layout.total > avail && layout.lines.length > 4) {
+      layout.lines.pop();
+      layout.bodyH = layout.lines.reduce((acc, l) => acc + (l === null ? layout.s * 0.9 : layout.s * 1.5), 0);
+      layout.total = layout.headH + layout.bodyH;
+    }
+    while (layout.lines.length && layout.lines[layout.lines.length - 1] === null) layout.lines.pop();
+    layout.lines.push('...');
+  }
+  let y = TOP + Math.max(0, (avail - layout.total) / 2);
+  g.textAlign = 'center';
+  if (layout.titleLines.length) {
+    g.font = `600 ${layout.tSize}px ${fam}`;
+    for (const l of layout.titleLines) { g.fillText(l, W / 2, y); y += layout.tSize * 1.25; }
+  }
+  if (by) { g.font = `400 ${layout.s}px ${fam}`; g.fillText('por ' + by, W / 2, y + layout.s * 0.1); y += layout.s * 1.1; }
+  if (layout.titleLines.length || by) y += layout.s * 1.6;
+  g.font = `400 ${layout.s}px ${fam}`;
+  let blockW = 0;
+  for (const l of layout.lines) if (l) blockW = Math.max(blockW, g.measureText(l).width);
+  const x0 = (W - blockW) / 2;
+  g.textAlign = 'left';
+  for (const l of layout.lines) {
+    if (l === null) { y += layout.s * 0.9; continue; }
+    g.fillText(l, x0, y); y += layout.s * 1.5;
+  }
+  g.textAlign = 'center'; g.font = `400 44px ${fam}`;
+  try { g.letterSpacing = '10px'; } catch (e) {}
+  g.fillText('soneto', W / 2, H - 170);
+  return new Promise(res => cv.toBlob(res, 'image/png'));
+}
+async function doShareImage(p) {
+  toast('Preparando a imagem...');
+  let blob;
+  try { blob = await storyBlob(p); } catch (e) { return fail('Não consegui gerar a imagem.', e); }
+  if (!blob) return fail('Não consegui gerar a imagem.', 'sem imagem');
+  const file = new File([blob], 'soneto-poema.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: shareText(p) }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; console.error(e); }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'soneto-poema.png';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('Imagem salva. Agora é só postar nos stories.');
+}
+
+/* ---------- termos de uso e privacidade ---------- */
+function viewTerms() {
+  theme(COMBOS[0]); chrome('default', true);
+  const contact = CONTACT_EMAIL
+    ? `Para pedir a retirada de um texto, tirar dúvidas ou pedir a exclusão dos seus dados, escreva para <a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a>.`
+    : 'Para pedir a retirada de um texto, use o botão "Denunciar autoria" no poema.';
+  view.innerHTML = `<div class="page"><div class="doc">
+    <h1>Termos de uso e privacidade</h1>
+    <p class="upd">Última atualização: 1 de outubro de 2026</p>
+
+    <h2>O que é o Soneto</h2>
+    <p>O Soneto é um espaço para ler e publicar poemas. Aqui você encontra textos de autores em domínio público e poemas escritos por quem usa o site. Ao usar o Soneto, você concorda com as regras abaixo.</p>
+
+    <h2>Sua conta</h2>
+    <p>Para publicar, você cria uma conta com e-mail e senha e escolhe um nome e um @ que aparecem no seu perfil. Cuide da sua senha e não use a conta de outra pessoa. Se você tem menos de 18 anos, use o Soneto com o conhecimento de um responsável.</p>
+
+    <h2>Seus poemas</h2>
+    <p>Os poemas que você publica continuam sendo seus. Ao publicar, você autoriza o Soneto a mostrá-los no site, na sua página, no feed e em links de compartilhamento. Você pode editar ou apagar seus poemas quando quiser. Publique apenas textos que você escreveu ou que estejam em domínio público. Não publique a obra de outra pessoa como se fosse sua.</p>
+
+    <h2>Páginas de autores de domínio público</h2>
+    <p>As páginas com selo dourado reúnem obras de autores em domínio público, ou seja, obras que já podem ser usadas livremente. Qualquer pessoa pode contribuir com um poema nessas páginas, desde que marque a confirmação de que o poema pertence ao autor. Ao contribuir, você declara que o poema é mesmo daquele autor e que ele está em domínio público.</p>
+    <p>Os poemas enviados pelo próprio Soneto aparecem como "Enviado por Soneto". Textos antigos podem ter pequenas diferenças de grafia entre uma edição e outra. Se você encontrar um erro, avise pela denúncia.</p>
+
+    <h2>Denúncias e retirada de conteúdo</h2>
+    <p>Se um poema foi atribuído ao autor errado, violar direitos de alguém ou desrespeitar estas regras, use o botão "Denunciar autoria" no poema. Vamos analisar os pedidos e remover o que for necessário. Quem enviou um poema pode apagá-lo a qualquer momento.</p>
+
+    <h2>O que não é permitido</h2>
+    <p>Não use o Soneto para enviar spam, plágio, conteúdo ilegal, conteúdo que incite violência ou ódio, nem dados pessoais de outras pessoas. Contas e poemas que descumprirem estas regras podem ser removidos.</p>
+
+    <h2>Privacidade</h2>
+    <p>Guardamos o que é necessário para o site funcionar: seu e-mail, seu nome, seu @, a frase de apresentação que você escrever, a cor da sua página e os poemas que você publicar. Seu nome, seu @, sua frase e seus poemas são públicos. Seu e-mail e sua senha não aparecem para outras pessoas, e a senha é tratada pelo serviço de login, sem ficar visível para nós.</p>
+    <p>Os dados ficam armazenados no Supabase, que fornece o banco de dados e o login. O site usa o armazenamento do seu navegador apenas para manter você conectado. Não usamos publicidade e não vendemos dados. As letras do site são carregadas do Google Fonts, que pode registrar esse acesso.</p>
+    <p>Nos termos da Lei Geral de Proteção de Dados (LGPD), você pode pedir a correção ou a exclusão dos seus dados e da sua conta.</p>
+
+    <h2>Mudanças nestes termos</h2>
+    <p>Podemos atualizar estes termos. Quando houver mudanças importantes, vamos avisar no site. Continuar usando o Soneto depois disso significa que você aceita as mudanças.</p>
+
+    <h2>Contato</h2>
+    <p>${contact}</p>
+  </div></div>`;
+}
+
 /* ---------- criar poema / contribuir ---------- */
 function sheetHTML() {
   const opts = [{id:'auto', name:'Automático', desc:'A forma muda sozinha conforme você adiciona versos.'}, ...FORMS];
@@ -593,18 +806,32 @@ function grow(t) {
   t.style.height = 'auto';
   t.style.height = Math.max(t.scrollHeight, Math.round(window.innerHeight * .4)) + 'px';
 }
-async function viewCreate(id, slug) {
-  createAuthor = null;
-  if (slug) {
+let editing = null;
+async function viewCreate(id, slug, editId) {
+  createAuthor = null; editing = null;
+  if (editId) {
+    theme(COMBOS[0]); chrome('default', false); loading();
+    let ep;
+    try {
+      if (UUID_RE.test(editId)) { const l = await fetchPoems(q => q.eq('id', editId).limit(1)); ep = l[0]; }
+    } catch (e) { return showError(id, e); }
+    if (id !== navId) return;
+    if (!ep || ep.author || !me || ep.user_id !== me.id) return notFound('Você não pode editar esse poema.');
+    editing = ep;
+    const ectx = 'edit:' + ep.id;
+    if (draft.ctx !== ectx) {
+      draft = { title: ep.title || '', body: ep.body, color: ep.color, mode: detect(countV(ep.body)).id === ep.form ? 'auto' : ep.form, agree: false, ctx: ectx };
+    }
+  } else if (slug) {
     theme(COMBOS[0]); chrome('default', false); loading();
     try { createAuthor = (await getAuthors()).find(a => a.slug === slug) || null; }
     catch (e) { return showError(id, e); }
     if (id !== navId) return;
     if (!createAuthor || createAuthor.kind !== 'dominio_publico') { createAuthor = null; return notFound('Não é possível contribuir com esse autor.'); }
   }
-  const ctx = slug || '';
+  const ctx = editing ? 'edit:' + editing.id : (slug || '');
   if (draft.ctx !== ctx) { draft = newDraft(); draft.ctx = ctx; }
-  theme(comboOf(draft.color)); chrome('create', false);
+  theme(comboOf(draft.color)); chrome('create', false, editing ? 'Salvar' : 'Publicar');
   view.innerHTML = `<div class="create">
       ${createAuthor ? `<div class="ctx">Contribuindo com <strong>${esc(createAuthor.name)}</strong>${seal(createAuthor.kind)}</div>` : ''}
       <button class="chip" id="chip" data-act="form-open"><span id="chipTxt"></span>${ICON.chev}</button>
@@ -628,6 +855,18 @@ async function publish() {
   if (createAuthor && !draft.agree) return;
   const n = countV(body);
   const f = draft.mode === 'auto' ? detect(n) : formOf(draft.mode);
+  if (editing) {
+    const pb0 = $('pubBtn'); if (pb0) pb0.disabled = true;
+    const { data, error } = await sb.from('poems')
+      .update({ title: draft.title.trim() || null, body, form: f.id, color: draft.color })
+      .eq('id', editing.id).select('id');
+    if (error || !data || !data.length) { fail('Não consegui salvar as mudanças.', error || 'sem permissão'); updateMeta(); return; }
+    const pid = editing.id;
+    draft = newDraft(); editing = null;
+    toast('Poema atualizado.');
+    location.hash = '#/p/' + enc(pid);
+    return;
+  }
   const row = { title: draft.title.trim() || null, body, form: f.id, color: draft.color, submitted_by: me.id, sent_by_platform: false };
   if (createAuthor) { row.author_id = createAuthor.id; row.user_id = null; row.authorship_confirmed = true; }
   else { row.user_id = me.id; row.author_id = null; }
@@ -687,13 +926,14 @@ function menuColors() {
 /* ================= rotas ================= */
 async function route() {
   const id = ++navId;
+  document.title = 'Soneto';
   document.body.classList.remove('menu-open');
   closeReport();
   const parts = location.hash.replace(/^#\/?/, '').split('/').map(dec);
   const a = parts[0], b = parts[1];
   window.scrollTo(0, 0);
 
-  if ((a === 'novo' || a === 'bem-vindo') && !session) { pending = location.hash; location.hash = '#/entrar'; return; }
+  if ((a === 'novo' || a === 'editar' || a === 'bem-vindo') && !session) { pending = location.hash; location.hash = '#/entrar'; return; }
   if (session && me && !me.display_name && a !== 'bem-vindo') { location.hash = '#/bem-vindo'; return; }
   if (session && a === 'entrar') { location.hash = '#/'; return; }
 
@@ -706,6 +946,9 @@ async function route() {
     case 'u':          return viewProfile(id, b);
     case 'a':          return viewAuthor(id, b);
     case 'novo':       return viewCreate(id, b);
+    case 'editar':     return viewCreate(id, '', b);
+    case 'p':          return viewPoem(id, b);
+    case 'termos':     return viewTerms();
     case 'entrar':     return viewAuth();
     case 'bem-vindo':  return viewOnboard();
     default:           return viewFeed(id);
@@ -752,7 +995,7 @@ document.addEventListener('click', async e => {
       break;
     }
 
-    case 'close-create': location.hash = createAuthor ? '#/a/' + enc(createAuthor.slug) : '#/'; break;
+    case 'close-create': location.hash = editing ? '#/p/' + enc(editing.id) : (createAuthor ? '#/a/' + enc(createAuthor.slug) : '#/'); break;
     case 'form-open': $('sheet').innerHTML = sheetHTML(); $('sheet').hidden = false; break;
     case 'sheet-close': $('sheet').hidden = true; break;
     case 'form-pick': draft.mode = id; $('sheet').hidden = true; updateMeta(); break;
@@ -766,12 +1009,16 @@ document.addEventListener('click', async e => {
     case 'report-close': closeReport(); break;
     case 'report-send': sendReport(id); break;
 
+    case 'share':     if (currentPoem && currentPoem.id === id) doShare(currentPoem); break;
+    case 'share-img': if (currentPoem && currentPoem.id === id) doShareImage(currentPoem); break;
+    case 'copy-link': toast((await copyText(poemURL(id))) ? 'Link copiado.' : 'Não consegui copiar o link.'); break;
+
     case 'del': {
       if (!confirm('Apagar este poema? Isso não pode ser desfeito.')) break;
       const { error } = await sb.from('poems').delete().eq('id', id);
       if (error) { fail('Não consegui apagar.', error); break; }
       toast('Poema apagado.');
-      route();
+      if (location.hash.startsWith('#/p/')) location.hash = '#/'; else route();
       break;
     }
   }
