@@ -120,6 +120,16 @@ textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:
 .doc p{margin:.6rem 0}
 .doc .upd{text-align:center;opacity:.75;margin-bottom:1.6rem}
 .doc a{color:inherit}
+.mod{max-width:44rem;margin:0 auto}
+.tabs{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin:1rem 0 1.6rem}
+.chip.on{background:var(--ink);color:var(--bg)}
+.mcard{border:1.5px solid color-mix(in srgb,var(--ink) 35%,transparent);border-radius:16px;padding:1rem 1.1rem;margin:0 0 1rem;line-height:1.5}
+.mcard small,.mrow small{opacity:.75}
+.mex{white-space:pre-wrap;margin:.6rem 0;opacity:.9;overflow-wrap:anywhere}
+.mrow{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding:.9rem 0;border-bottom:1px solid color-mix(in srgb,var(--ink) 22%,transparent)}
+.mactions,.roles{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
+.mrow .roles{margin-top:0}
+.mactions .chip,.roles .chip{font-size:.75rem;padding:.4rem .8rem}
 .notice{max-width:28rem;margin:1.2rem auto 0;text-align:center;font-size:.9rem;opacity:.85}
 
 /* ---------- criar poema ---------- */
@@ -172,6 +182,7 @@ textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:
     <a href="#/explorar" data-act="menu-close">Explorar</a>
     <a href="#/aleatorio" data-act="menu-close">Aleatório</a>
     <a href="#/procurar" data-act="menu-close">Procurar</a>
+    <a id="menuMod" href="#/moderar" data-act="menu-close" hidden>Moderação</a>
     <a class="small" href="#/termos" data-act="menu-close">Termos de uso</a>
   </nav>
 </div>
@@ -375,6 +386,8 @@ function articleHTML(p, o) {
   const f = formOf(p.form);
   const canDel = o.tools && me && (p.user_id === me.id || p.submitted_by === me.id);
   const canEdit = o.tools && me && !p.author && p.user_id === me.id;
+  const canMod = o.tools && isStaff() && !canDel && (!p.sent_by_platform || isAdmin());
+  const canReport = o.share && !p.author && !(me && p.user_id === me.id);
   const href = '#/p/' + enc(p.id);
   const linkIt = o.link !== false;
   const metaTxt = `${esc(f.name)} · ${fmtDate(new Date(p.created_at))}`;
@@ -389,6 +402,8 @@ function articleHTML(p, o) {
         + (canEdit && canDel ? ' · ' : '')
         + (canDel ? `<button class="linklike" data-act="del" data-id="${esc(p.id)}">Apagar</button>` : '')
         + '</div>' : '')
+    + (canMod ? `<div class="p-sent"><button class="linklike" data-act="mod-del" data-id="${esc(p.id)}">Apagar como moderação</button></div>` : '')
+    + (canReport ? `<div class="p-sent"><button class="linklike" data-act="report" data-id="${esc(p.id)}">Denunciar este poema</button></div>` : '')
     + (o.share ? shareHTML(p) : '')
     + (o.foot ? footHTML() : '')
     + '</article>';
@@ -742,12 +757,111 @@ async function doShareImage(p) {
   toast('Imagem salva. Agora é só postar nos stories.');
 }
 
+/* ---------- moderacao ---------- */
+let modTab = 'denuncias', modResolved = false, modTimer = null;
+function modErr(e) {
+  const m = String(e && e.message || '').toLowerCase();
+  if (m.includes('poema fixo')) return 'Esse poema é fixo do Soneto. Só administradores podem apagá-lo.';
+  if (m.includes('unico administrador')) return 'Você é o único administrador. Promova outra pessoa antes de mudar o seu papel.';
+  if (m.includes('sem permissao')) return 'Você não tem permissão para isso.';
+  return 'Não consegui concluir a ação.';
+}
+async function viewMod(id) {
+  theme(COMBOS[0]); chrome('default', false);
+  if (!isStaff()) return notFound('Você não tem acesso a essa página.');
+  if (modTab === 'contas' && !isAdmin()) modTab = 'denuncias';
+  view.innerHTML = '<div class="page"><div class="mod"><h1 class="kicker">Moderação</h1><div class="tabs" id="modTabs"></div><div id="modBody"></div></div></div>';
+  renderModTabs();
+  loadModTab();
+}
+function renderModTabs() {
+  const tabs = [['denuncias', 'Denúncias']].concat(isAdmin() ? [['contas', 'Contas']] : [], [['registro', 'Registro']]);
+  const box = $('modTabs');
+  if (box) box.innerHTML = tabs.map(t => `<button class="chip${modTab === t[0] ? ' on' : ''}" data-act="mod-tab" data-id="${t[0]}">${t[1]}</button>`).join('');
+}
+async function loadModTab() {
+  if (!$('modBody')) return;
+  const tab = modTab, myNav = navId;
+  $('modBody').innerHTML = '<p class="loading" style="padding-top:4rem">· · ·</p>';
+  try {
+    let html;
+    if (tab === 'denuncias') html = await modReportsHTML();
+    else if (tab === 'contas') html = await modAccountsHTML();
+    else html = await modLogHTML();
+    if (tab !== modTab || myNav !== navId || !$('modBody')) return;
+    $('modBody').innerHTML = html;
+  } catch (e) {
+    console.error(e);
+    if ($('modBody')) $('modBody').innerHTML = '<p class="empty">Não consegui carregar. Rodou o SQL de moderação?</p>';
+  }
+}
+async function modReportsHTML() {
+  const { data, error } = await sb.from('reports')
+    .select('id,reason,created_at,resolved,reporter:profiles!reporter_id(username),'
+      + 'poem:poems(id,title,body,sent_by_platform,user_id,submitted_by,author:authors(name,slug),owner:profiles!user_id(username),submitter:profiles!submitted_by(username))')
+    .eq('resolved', modResolved).order('created_at', { ascending: false }).limit(50);
+  if (error) throw error;
+  const head = `<p style="text-align:center"><button class="linklike" data-act="mod-toggle-resolved">${modResolved ? 'Ver denúncias abertas' : 'Ver denúncias resolvidas'}</button></p>`;
+  const cards = (data || []).filter(r => r.poem).map(r => {
+    const p = r.poem;
+    const who = p.sent_by_platform ? 'Poema fixo, enviado pelo Soneto'
+      : p.author ? `Contribuição na página de ${esc(p.author.name)}, enviada por ${p.submitter ? '@' + esc(p.submitter.username) : 'um usuário'}`
+      : `Poema de ${p.owner ? '@' + esc(p.owner.username) : 'um usuário'}`;
+    const excerpt = p.body.split('\n').filter(l => l.trim()).slice(0, 4).join('\n');
+    const reporter = r.reporter ? '@' + esc(r.reporter.username) : 'alguém';
+    const canDelete = !p.sent_by_platform || isAdmin();
+    const actions = r.resolved ? `<a class="chip" href="#/p/${enc(p.id)}">Ver poema</a>`
+      : `<a class="chip" href="#/p/${enc(p.id)}">Ver poema</a>`
+        + `<button class="chip" data-act="mod-resolve" data-id="${esc(r.id)}">Marcar como resolvida</button>`
+        + (canDelete ? `<button class="chip" data-act="mod-del" data-id="${esc(p.id)}">Apagar poema</button>`
+          : '<small>Poema fixo: só administradores podem apagar.</small>');
+    return `<div class="mcard"><strong>${esc(p.title || 'Sem título')}</strong><br><small>${who}</small>`
+      + `<div class="mex">${esc(excerpt)}</div>`
+      + `<div><strong>Motivo:</strong> ${esc(r.reason)}</div>`
+      + `<small>Denunciado por ${reporter} em ${fmtDate(new Date(r.created_at))}</small>`
+      + `<div class="mactions">${actions}</div></div>`;
+  }).join('');
+  return head + (cards || `<p class="empty">${modResolved ? 'Nenhuma denúncia resolvida.' : 'Nenhuma denúncia aberta. Tudo em ordem.'}</p>`);
+}
+async function modAccountsList(q) {
+  let query = sb.from('profiles').select('id,username,display_name,role,created_at')
+    .not('display_name', 'is', null).order('created_at', { ascending: false }).limit(40);
+  const safe = (q || '').replace(/[%,()*\\"'.:]/g, ' ').trim();
+  if (safe) query = query.or(`username.ilike.*${safe}*,display_name.ilike.*${safe}*`);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []).map(u => `<div class="mrow"><span><strong>${esc(u.display_name)}</strong><br><small>@${esc(u.username)}</small></span>`
+    + `<span class="roles">${['user', 'moderator', 'admin'].map(r =>
+      `<button class="chip${u.role === r ? ' on' : ''}" data-act="mod-role" data-id="${esc(u.id)}" data-role="${r}">${ROLES[r]}</button>`).join('')}</span></div>`).join('')
+    || '<p class="empty">Ninguém encontrado.</p>';
+}
+async function modAccountsHTML() {
+  return '<input class="q" id="mq" placeholder="Buscar por nome ou @" autocomplete="off" autocapitalize="off" spellcheck="false">'
+    + '<div id="accList">' + await modAccountsList('') + '</div>';
+}
+async function modLogHTML() {
+  const { data, error } = await sb.from('mod_log')
+    .select('id,summary,details,created_at,actor:profiles!actor_id(username)')
+    .order('created_at', { ascending: false }).limit(50);
+  if (error) throw error;
+  return (data || []).map(l => {
+    const d = l.details || {};
+    const when = new Date(l.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    return `<div class="mcard"><small>${esc(when)} · ${l.actor ? '@' + esc(l.actor.username) : 'conta removida'}</small>`
+      + `<div>${esc(l.summary)}</div>`
+      + (d.trecho ? `<div class="mex">${esc(d.trecho)}</div>` : '')
+      + (d.enviado_por ? `<small>Enviado por @${esc(d.enviado_por)}</small><br>` : '')
+      + (d.denuncias ? `<small>Motivos das denúncias: ${esc(d.denuncias)}</small>` : '')
+      + '</div>';
+  }).join('') || '<p class="empty">Nenhuma ação registrada ainda.</p>';
+}
+
 /* ---------- termos de uso e privacidade ---------- */
 function viewTerms() {
   theme(COMBOS[0]); chrome('default', true);
   const contact = CONTACT_EMAIL
     ? `Para pedir a retirada de um texto, tirar dúvidas ou pedir a exclusão dos seus dados, escreva para <a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a>.`
-    : 'Para pedir a retirada de um texto, use o botão "Denunciar autoria" no poema.';
+    : 'Para pedir a retirada de um texto, use o botão de denúncia no poema.';
   view.innerHTML = `<div class="page"><div class="doc">
     <h1>Termos de uso e privacidade</h1>
     <p class="upd">Última atualização: 1 de outubro de 2026</p>
@@ -766,7 +880,10 @@ function viewTerms() {
     <p>Os poemas enviados pelo próprio Soneto aparecem como "Enviado por Soneto". Textos antigos podem ter pequenas diferenças de grafia entre uma edição e outra. Se você encontrar um erro, avise pela denúncia.</p>
 
     <h2>Denúncias e retirada de conteúdo</h2>
-    <p>Se um poema foi atribuído ao autor errado, violar direitos de alguém ou desrespeitar estas regras, use o botão "Denunciar autoria" no poema. Vamos analisar os pedidos e remover o que for necessário. Quem enviou um poema pode apagá-lo a qualquer momento.</p>
+    <p>Se um poema foi atribuído ao autor errado, violar direitos de alguém ou desrespeitar estas regras, use o botão de denúncia no poema. Vamos analisar os pedidos e remover o que for necessário. Quem enviou um poema pode apagá-lo a qualquer momento.</p>
+
+    <h2>Moderação</h2>
+    <p>O Soneto tem uma equipe de moderação, formada por pessoas com acesso a uma página restrita. Moderadores podem ver as denúncias e apagar poemas da comunidade que descumpram estas regras. Os poemas fixos enviados pelo Soneto só podem ser alterados ou apagados pela administração.</p>
 
     <h2>O que não é permitido</h2>
     <p>Não use o Soneto para enviar spam, plágio, conteúdo ilegal, conteúdo que incite violência ou ódio, nem dados pessoais de outras pessoas. Contas e poemas que descumprirem estas regras podem ser removidos.</p>
@@ -806,6 +923,9 @@ function grow(t) {
   t.style.height = 'auto';
   t.style.height = Math.max(t.scrollHeight, Math.round(window.innerHeight * .4)) + 'px';
 }
+const ROLES = { user: 'Usuário', moderator: 'Moderador', admin: 'Administrador' };
+const isStaff = () => !!me && (me.role === 'moderator' || me.role === 'admin');
+const isAdmin = () => !!me && me.role === 'admin';
 let editing = null;
 async function viewCreate(id, slug, editId) {
   createAuthor = null; editing = null;
@@ -886,9 +1006,9 @@ function openReport(poemId) {
   const o = document.createElement('div');
   o.className = 'sheet'; o.id = 'reportSheet';
   o.innerHTML = `<button class="iconbtn sx" data-act="report-close" aria-label="Fechar">${ICON.x}</button>
-    <h2 class="kicker">Denunciar autoria</h2>
-    <p class="lead">Este poema não pertence a este autor? Conte o que você sabe.</p>
-    <textarea class="q" id="rsn" rows="4" maxlength="500" placeholder="Por exemplo: este poema é de outra pessoa."></textarea>
+    <h2 class="kicker">Denunciar</h2>
+    <p class="lead">Algo está errado com este poema? Conte o que aconteceu.</p>
+    <textarea class="q" id="rsn" rows="4" maxlength="500" placeholder="Por exemplo: este poema é de outra pessoa, tem conteúdo ofensivo ou é spam."></textarea>
     <div class="err" id="rErr"></div>
     <button class="btn" id="rBtn" data-act="report-send" data-id="${esc(poemId)}">Enviar denúncia</button>
     <button class="btn alt" data-act="report-close">Cancelar</button>`;
@@ -933,7 +1053,7 @@ async function route() {
   const a = parts[0], b = parts[1];
   window.scrollTo(0, 0);
 
-  if ((a === 'novo' || a === 'editar' || a === 'bem-vindo') && !session) { pending = location.hash; location.hash = '#/entrar'; return; }
+  if ((a === 'novo' || a === 'editar' || a === 'moderar' || a === 'bem-vindo') && !session) { pending = location.hash; location.hash = '#/entrar'; return; }
   if (session && me && !me.display_name && a !== 'bem-vindo') { location.hash = '#/bem-vindo'; return; }
   if (session && a === 'entrar') { location.hash = '#/'; return; }
 
@@ -949,6 +1069,7 @@ async function route() {
     case 'editar':     return viewCreate(id, '', b);
     case 'p':          return viewPoem(id, b);
     case 'termos':     return viewTerms();
+    case 'moderar':    return viewMod(id);
     case 'entrar':     return viewAuth();
     case 'bem-vindo':  return viewOnboard();
     default:           return viewFeed(id);
@@ -963,7 +1084,7 @@ document.addEventListener('click', async e => {
   switch (act) {
     case 'menu-toggle':
       if (document.body.classList.contains('menu-open')) document.body.classList.remove('menu-open');
-      else { menuColors(); document.body.classList.add('menu-open'); }
+      else { menuColors(); const mm = $('menuMod'); if (mm) mm.hidden = !isStaff(); document.body.classList.add('menu-open'); }
       break;
     case 'menu-close': {
       document.body.classList.remove('menu-open');
@@ -1013,6 +1134,36 @@ document.addEventListener('click', async e => {
     case 'share-img': if (currentPoem && currentPoem.id === id) doShareImage(currentPoem); break;
     case 'copy-link': toast((await copyText(poemURL(id))) ? 'Link copiado.' : 'Não consegui copiar o link.'); break;
 
+    case 'mod-tab': modTab = id; renderModTabs(); loadModTab(); break;
+    case 'mod-toggle-resolved': modResolved = !modResolved; loadModTab(); break;
+    case 'mod-resolve': {
+      const { error } = await sb.rpc('mod_resolve_report', { p_report_id: id });
+      if (error) { fail(modErr(error), error); break; }
+      toast('Denúncia marcada como resolvida.');
+      loadModTab();
+      break;
+    }
+    case 'mod-del': {
+      if (!confirm('Apagar este poema da plataforma? Isso não pode ser desfeito.')) break;
+      const { error } = await sb.rpc('mod_delete_poem', { p_poem_id: id });
+      if (error) { fail(modErr(error), error); break; }
+      toast('Poema apagado.');
+      if (location.hash.startsWith('#/p/')) location.hash = '#/';
+      else if (location.hash === '#/moderar') loadModTab();
+      else route();
+      break;
+    }
+    case 'mod-role': {
+      const role = el.dataset.role;
+      if (!confirm('Mudar o papel desta conta para ' + ROLES[role] + '?')) break;
+      const { error } = await sb.rpc('admin_set_role', { p_user_id: id, p_role: role });
+      if (error) { fail(modErr(error), error); break; }
+      toast('Papel atualizado.');
+      if (me && id === me.id) { await loadMe(); route(); break; }
+      loadModTab();
+      break;
+    }
+
     case 'del': {
       if (!confirm('Apagar este poema? Isso não pode ser desfeito.')) break;
       const { error } = await sb.from('poems').delete().eq('id', id);
@@ -1027,6 +1178,7 @@ document.addEventListener('click', async e => {
 document.addEventListener('input', e => {
   const t = e.target;
   if (t.id === 'q') { clearTimeout(searchTimer); const v = t.value; searchTimer = setTimeout(() => runSearch(v), 250); }
+  else if (t.id === 'mq') { clearTimeout(modTimer); const v = t.value; modTimer = setTimeout(async () => { try { const h = await modAccountsList(v); if ($('accList')) $('accList').innerHTML = h; } catch (err) { console.error(err); } }, 250); }
   else if (t.id === 'tIn') draft.title = t.value;
   else if (t.id === 'bIn') { draft.body = t.value; grow(t); updateMeta(); }
   else if (t.id === 'un') { const v = t.value.toLowerCase().replace(/[^a-z0-9_]/g, ''); if (v !== t.value) t.value = v; }
