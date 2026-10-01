@@ -20,6 +20,11 @@
 *,*::before,*::after{box-sizing:inherit}
 html{height:100%;background:var(--page-bg);scroll-padding-top:env(safe-area-inset-top,0px)}
 html.snap{scroll-snap-type:y proximity}
+/* celular/tablet: o feed "pula" de poema em poema, um por vez */
+@media (hover:none) and (pointer:coarse){
+  html.snap{scroll-snap-type:y mandatory}
+  html.snap .poem{scroll-snap-stop:always}
+}
 body{margin:0;height:100%;background:var(--page-bg);font-family:var(--font);-webkit-text-size-adjust:100%}
 [hidden]{display:none!important}
 button,input,textarea{font-family:inherit}
@@ -144,6 +149,7 @@ textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:
   <a class="fab" id="fab" href="#/novo" aria-label="Criar poema"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></a>
   <div id="scrim" data-act="menu-close"></div>
   <nav id="menu" aria-label="Menu">
+    <a href="#/" data-act="menu-close">Início</a>
     <a href="#/explorar" data-act="menu-close">Explorar</a>
     <a href="#/aleatorio" data-act="menu-close">Aleatório</a>
     <a href="#/procurar" data-act="menu-close">Procurar</a>
@@ -699,7 +705,13 @@ document.addEventListener('click', async e => {
       if (document.body.classList.contains('menu-open')) document.body.classList.remove('menu-open');
       else { menuColors(); document.body.classList.add('menu-open'); }
       break;
-    case 'menu-close': document.body.classList.remove('menu-open'); break;
+    case 'menu-close': {
+      document.body.classList.remove('menu-open');
+      const h = el.getAttribute && el.getAttribute('href');
+      const cur = location.hash || '#/';
+      if (h && h === cur) route();
+      break;
+    }
     case 'retry': route(); break;
     case 'another': viewRandom(navId); break;
 
