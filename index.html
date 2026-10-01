@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Soneto — protótipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --font:'Zilla Slab','Rockwell','Roboto Slab',Georgia,serif;
+  --page-bg:#cfe3fa;
+}
+
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;background:var(--page-bg);scroll-padding-top:env(safe-area-inset-top,0px)}
+html.snap{scroll-snap-type:y proximity}
+body{margin:0;height:100%;background:var(--page-bg);font-family:var(--font);-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+button{font-family:inherit}
+
+#app{--bg:#cfe3fa;--ink:#1b365d;--btn-bg:rgba(255,255,255,.55);min-height:100%;color:var(--ink)}
+#view{min-height:100%}
+
+/* ---------- barra superior e botões ---------- */
+#topbar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 8px;pointer-events:none;color:var(--ink)}
+#topbar>*{pointer-events:auto}
+.iconbtn{width:44px;height:44px;border-radius:50%;border:0;background:var(--btn-bg);color:inherit;display:grid;place-items:center;
+  cursor:pointer;text-decoration:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.iconbtn svg,.fab svg,.chip svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.wordmark{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 10px);height:44px;
+  display:flex;align-items:center;font-size:1.15rem;letter-spacing:.16em;color:inherit;text-decoration:none}
+.fab{position:fixed;right:18px;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);width:58px;height:58px;border-radius:50%;
+  background:var(--ink);color:var(--bg);display:grid;place-items:center;z-index:20;box-shadow:0 6px 18px rgba(0,0,0,.18);text-decoration:none}
+.fab svg{width:26px;height:26px;stroke-width:2.2}
+.pub{border:1.5px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:999px;padding:.55rem 1.15rem;font-weight:600;font-size:.95rem;cursor:pointer}
+.pub:disabled{opacity:.35;cursor:default}
+
+/* ---------- poemas ---------- */
+.poem{min-height:100svh;display:flex;align-items:center;justify-content:center;padding:5.5rem 1.4rem 6.5rem;
+  background:var(--pbg);color:var(--pfg);scroll-snap-align:start}
+.poem article{width:100%;max-width:27rem}
+.p-title{margin:0;text-align:center;font-weight:600;font-size:1.7rem;line-height:1.2}
+.p-by{display:block;text-align:center;margin-top:.35rem;font-size:1.02rem;color:inherit;opacity:.85;text-decoration:none}
+.p-body{white-space:pre-wrap;margin:2rem auto 0;max-width:24rem;font-size:1.15rem;line-height:1.75;overflow-wrap:anywhere}
+.p-meta{margin-top:2rem;text-align:center;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;opacity:.7}
+.again{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 26px);z-index:20;
+  border:0;border-radius:999px;background:var(--ink);color:var(--bg);padding:.8rem 1.5rem;font-size:1rem;font-weight:600;cursor:pointer}
+
+/* ---------- páginas simples ---------- */
+.page{min-height:100%;padding:6rem 1.6rem 7rem;background:var(--bg);color:var(--ink)}
+.kicker{margin:0 0 2rem;text-align:center;font-size:.9rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase}
+.list{max-width:28rem;margin:0 auto}
+.list a{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1rem 0;color:inherit;text-decoration:none;font-size:1.3rem;
+  border-bottom:1px solid color-mix(in srgb,var(--ink) 22%,transparent)}
+.list small{font-size:.9rem;opacity:.75}
+.empty{text-align:center;opacity:.75}
+.q{display:block;width:100%;max-width:28rem;margin:0 auto 1.4rem;background:transparent;border:0;border-bottom:2px solid var(--ink);outline:0;
+  color:inherit;font:inherit;font-size:1.5rem;padding:.4rem 0}
+.q::placeholder,.t-in::placeholder,.b-in::placeholder{color:color-mix(in srgb,var(--ink) 50%,transparent)}
+
+/* ---------- perfil ---------- */
+.ph{text-align:center}
+.ph h1{margin:0;font-size:2.1rem;font-weight:600}
+.handle{margin-top:.2rem;opacity:.8}
+.bio{max-width:24rem;margin:1rem auto 0;line-height:1.5}
+.count{margin-top:.8rem;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;opacity:.7}
+.swatches{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:1.2rem auto 0;max-width:22rem}
+.sw{width:48px;height:48px;border-radius:12px;border:1.5px solid rgba(0,0,0,.2);font-size:1rem;font-weight:600;cursor:pointer}
+.sw.on{outline:2.5px solid var(--ink);outline-offset:3px}
+.pp{max-width:27rem;margin:3rem auto 0;padding-top:3rem;border-top:1px solid color-mix(in srgb,var(--ink) 25%,transparent)}
+
+/* ---------- criar poema ---------- */
+.create{min-height:100%;padding:5.4rem 1.4rem 9rem;display:flex;flex-direction:column;align-items:center;background:var(--bg);color:var(--ink)}
+.chip{display:inline-flex;align-items:center;gap:.4rem;border:1.5px solid currentColor;border-radius:999px;padding:.4rem .9rem;background:transparent;color:inherit;
+  font-weight:600;font-size:.85rem;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.chip svg{width:16px;height:16px}
+.meta{margin-top:.6rem;min-height:1.3em;font-size:.9rem;opacity:.75}
+.t-in{width:100%;max-width:27rem;margin-top:1.4rem;background:transparent;border:0;outline:0;text-align:center;color:inherit;font:inherit;font-weight:600;font-size:1.7rem}
+.b-in{width:100%;max-width:24rem;margin-top:1.2rem;min-height:40vh;background:transparent;border:0;outline:0;resize:none;color:inherit;font:inherit;font-size:1.15rem;line-height:1.75}
+.dots{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:20;display:flex;gap:10px;
+  padding:10px 14px;border-radius:999px;background:var(--btn-bg);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.dot{width:26px;height:26px;border-radius:50%;border:1px solid rgba(0,0,0,.25);cursor:pointer;padding:0}
+.dot.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink)}
+.sheet{position:fixed;inset:0;z-index:40;overflow:auto;background:var(--bg);color:var(--ink);
+  padding:calc(env(safe-area-inset-top,0px) + 4.2rem) 1.4rem calc(env(safe-area-inset-bottom,0px) + 2rem)}
+.sheet .sx{position:absolute;top:calc(env(safe-area-inset-top,0px) + 10px);right:12px}
+.opt{display:block;width:100%;max-width:28rem;margin:0 auto;padding:1.05rem .5rem;background:none;border:0;color:inherit;text-align:center;cursor:pointer;
+  border-bottom:1px solid color-mix(in srgb,var(--ink) 22%,transparent)}
+.opt strong{display:block;font-size:1.1rem;letter-spacing:.08em;text-transform:uppercase}
+.opt span{display:block;margin-top:.3rem;font-size:.95rem;line-height:1.4;opacity:.85}
+.opt.on strong{text-decoration:underline;text-underline-offset:4px}
+
+/* ---------- menu (pequeno, na cor da página) ---------- */
+#scrim{position:fixed;inset:0;z-index:50;pointer-events:none}
+.menu-open #scrim{pointer-events:auto}
+#menu{position:fixed;z-index:60;top:calc(env(safe-area-inset-top,0px) + 62px);left:12px;min-width:168px;padding:.35rem;border-radius:18px;
+  background:color-mix(in srgb,var(--m-bg,#cfe3fa) 90%,var(--m-ink,#1b365d));color:var(--m-ink,#1b365d);
+  box-shadow:0 4px 16px rgba(0,0,0,.07);opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+.menu-open #menu{opacity:1;transform:none;pointer-events:auto}
+#menu a{display:block;padding:.6rem 1rem;border-radius:12px;color:inherit;text-decoration:none;font-size:1.05rem;letter-spacing:.03em}
+#menu a:active{background:color-mix(in srgb,var(--m-ink,#1b365d) 10%,transparent)}
+
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 100px);z-index:70;max-width:86vw;
+  background:#1b365d;color:#fff;border-radius:14px;padding:.7rem 1rem;font-size:.95rem;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar"></header>
+  <main id="view"></main>
+  <a class="fab" id="fab" href="#/novo" aria-label="Criar poema"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></a>
+  <div id="scrim" data-act="menu-close"></div>
+  <nav id="menu" aria-label="Menu">
+    <a href="#/explorar" data-act="menu-close">Explorar</a>
+    <a href="#/aleatorio" data-act="menu-close">Aleatório</a>
+    <a href="#/procurar" data-act="menu-close">Procurar</a>
+  </nav>
+</div>
+
+<div id="toast" role="status"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= dados do protótipo ================= */
+const COMBOS = [
+  {id:'azul',     name:'Azul bebê',    bg:'#cfe3fa', fg:'#1b365d'},
+  {id:'manteiga', name:'Manteiga',     bg:'#fff1a8', fg:'#5b4200'},
+  {id:'branco',   name:'Branco coral', bg:'#ffffff', fg:'#b3324a'},
+  {id:'rosa',     name:'Rosa',         bg:'#fcd9d3', fg:'#6b1d30'},
+  {id:'menta',    name:'Menta',        bg:'#d6f2dd', fg:'#17452f'},
+  {id:'lilas',    name:'Lilás',        bg:'#e5dcff', fg:'#3a2a6a'},
+  {id:'pessego',  name:'Pêssego',      bg:'#ffe2c8', fg:'#6e2f0c'},
+  {id:'noite',    name:'Noite',        bg:'#1b365d', fg:'#d9e8fb', dark:true}
+];
+const POEM_COLORS = COMBOS.slice(0, 7);
+
+const FORMS = [
+  {id:'livre',     name:'Versos livres', n:null, desc:'Sem número fixo de versos nem métrica. Liberdade total.'},
+  {id:'monostico', name:'Monóstico',     n:1,    desc:'Um único verso.'},
+  {id:'distico',   name:'Dístico',       n:2,    desc:'Dois versos.'},
+  {id:'haicai',    name:'Haicai',        n:3,    desc:'Três versos. Tradicionalmente 5-7-5 sílabas, de origem japonesa.'},
+  {id:'quadra',    name:'Quadra',        n:4,    desc:'Uma estrofe de quatro versos.'},
+  {id:'quintilha', name:'Quintilha',     n:5,    desc:'Cinco versos.'},
+  {id:'sextilha',  name:'Sextilha',      n:6,    desc:'Seis versos.'},
+  {id:'oitava',    name:'Oitava',        n:8,    desc:'Oito versos.'},
+  {id:'decima',    name:'Décima',        n:10,   desc:'Dez versos.'},
+  {id:'soneto',    name:'Soneto',        n:14,   desc:'Catorze versos: dois quartetos e dois tercetos. Nasceu na Sicília, no século XIII.'}
+];
+
+const USERS = {
+  marina:  {name:'Marina Teles', bio:'Escrevo no intervalo do café.',            combo:'azul'},
+  joaquim: {name:'Joaquim Reis', bio:'Haicais, chuva e pouca pressa.',           combo:'manteiga'},
+  voce:    {name:'Você',         bio:'Esta é a sua página. Toque em "Cores da página" para mudá-la.', combo:'branco'}
+};
+
+const RAW = [
+ {id:'p1', user:'marina', title:'Tarde', color:'azul', date:'30 set', body:
+`A tarde pousa mansa sobre o mar
+e a luz, cansada, deita-se no chão;
+guardo teu nome em fundo de canção
+que aprendi, sem querer, a decorar.
+
+Há palavras que sabem esperar
+no escuro de uma gaveta ou de uma mão
+e voltam, de repente, em solidão,
+vestidas de um antigo respirar.
+
+Não peço que me digas aonde vai,
+só deixa que o silêncio faça a ponte
+entre o que fica e aquilo que se esvai;
+
+e eu escrevo, em voz baixa, o horizonte,
+o resto de luz que sobre nós já cai
+e some, devagar, atrás do monte.`},
+ {id:'p2', user:'joaquim', title:'Chuva', color:'manteiga', date:'29 set', body:
+`Chuva de manhã —
+a rua toda esqueceu
+o seu caminho.`},
+ {id:'p3', user:'marina', title:'Sem pressa', color:'branco', date:'28 set', body:
+`Hoje acordei sem pressa
+e o café esfriou
+esperando que eu terminasse
+de olhar pela janela.
+
+Há dias em que a poesia
+é só isso:
+deixar a xícara em paz.`},
+ {id:'p4', user:'joaquim', title:'Canto', color:'menta', date:'27 set', body:
+`Sobre o escuro da manhã
+o pássaro aprende a voz;
+cada canto é uma maçã
+que cai dentro de nós.`},
+ {id:'p5', user:'voce', title:'Casa', color:'rosa', date:'26 set', body:
+`O verso é a menor casa
+onde cabe o mundo inteiro.`},
+ {id:'p6', user:'voce', title:'Domingo', color:'lilas', date:'25 set', body:
+`Domingo é o dia em que as coisas
+voltam a ser do tamanho delas.
+O pão, a rua vazia,
+o sino que não pede nada.
+
+Eu também volto:
+pequeno, inteiro,
+sem nenhum prazo no bolso
+e um verso novo
+que ainda não tem nome.`},
+ {id:'p7', user:'joaquim', title:'Verão', color:'pessego', date:'24 set', body:
+`Cigarra no muro —
+o calor também canta
+de olhos fechados.`}
+];
+
+/* ================= utilidades ================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const countV = t => t.split('\n').map(s => s.trim()).filter(Boolean).length;
+const detect = n => FORMS.find(f => f.n === n) || FORMS[0];
+const comboOf = id => COMBOS.find(c => c.id === id) || COMBOS[0];
+const formOf = id => FORMS.find(f => f.id === id) || FORMS[0];
+const word = n => n === 1 ? 'verso' : 'versos';
+const MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const fmtDate = d => d.getDate() + ' ' + MES[d.getMonth()];
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+const POEMS = RAW.map(p => ({...p, form: detect(countV(p.body)).id}));
+let order = shuffle(POEMS);
+const newDraft = () => ({title:'', body:'', color:'azul', mode:'auto'});
+let draft = newDraft();
+let palOpen = false;
+let lastRandom = null;
+
+const ICON = {
+  menu: '<svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+  user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>',
+  x:    '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  chev: '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>'
+};
+
+const app = $('app'), view = $('view'), topbar = $('topbar'), fab = $('fab'), toastEl = $('toast');
+
+function theme(c) {
+  app.style.setProperty('--bg', c.bg);
+  app.style.setProperty('--ink', c.fg);
+  app.style.setProperty('--btn-bg', c.dark ? 'rgba(0,0,0,.28)' : 'rgba(255,255,255,.55)');
+  document.documentElement.style.setProperty('--page-bg', c.bg);
+}
+
+function chrome(mode, showFab) {
+  topbar.innerHTML = mode === 'create'
+    ? `<button class="iconbtn" data-act="close-create" aria-label="Fechar">${ICON.x}</button><span></span><button class="pub" id="pubBtn" data-act="publish" disabled>Publicar</button>`
+    : `<button class="iconbtn" data-act="menu-toggle" aria-label="Menu">${ICON.menu}</button><a class="wordmark" href="#/">soneto</a><a class="iconbtn" href="#/u/voce" aria-label="Minha página">${ICON.user}</a>`;
+  fab.hidden = !showFab;
+}
+
+let toastTimer;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3200);
+}
+
+/* ================= blocos de poema ================= */
+function articleHTML(p, byline) {
+  const f = formOf(p.form);
+  return `<article>`
+    + (p.title ? `<h2 class="p-title">${esc(p.title)}</h2>` : '')
+    + (byline ? `<a class="p-by" href="#/u/${p.user}">por ${esc(USERS[p.user].name)}</a>` : '')
+    + `<div class="p-body">${esc(p.body)}</div>`
+    + `<div class="p-meta">${f.name} · ${p.date}</div></article>`;
+}
+function sectionHTML(p) {
+  const c = comboOf(p.color);
+  return `<section class="poem" style="--pbg:${c.bg};--pfg:${c.fg}">${articleHTML(p, true)}</section>`;
+}
+
+/* ================= telas ================= */
+function viewFeed(list) {
+  chrome('default', true);
+  if (!list.length) {
+    theme(COMBOS[0]);
+    view.innerHTML = '<div class="page"><p class="empty">Nenhum poema aqui ainda.</p></div>';
+    return;
+  }
+  theme(comboOf(list[0].color));
+  view.innerHTML = list.map(sectionHTML).join('');
+}
+
+function viewExplore() {
+  theme(COMBOS[0]); chrome('default', true);
+  const rows = FORMS.map(f => [f, POEMS.filter(p => p.form === f.id).length]).filter(r => r[1] > 0);
+  view.innerHTML = `<div class="page"><h1 class="kicker">Explorar por forma</h1><div class="list">`
+    + `<a href="#/"><span>Todos os poemas</span><small>${POEMS.length}</small></a>`
+    + rows.map(([f, n]) => `<a href="#/forma/${f.id}"><span>${f.name}</span><small>${n}</small></a>`).join('')
+    + `</div></div>`;
+}
+
+function viewRandom() {
+  const pool = POEMS.filter(p => p.id !== lastRandom);
+  const p = pool[Math.floor(Math.random() * pool.length)];
+  lastRandom = p.id;
+  theme(comboOf(p.color)); chrome('default', true);
+  view.innerHTML = sectionHTML(p) + '<button class="again" data-act="another">Outro poema</button>';
+  window.scrollTo(0, 0);
+}
+
+function userRows(q) {
+  q = q.trim().toLowerCase().replace(/^@/, '');
+  const rows = Object.entries(USERS)
+    .filter(([k, u]) => !q || k.includes(q) || u.name.toLowerCase().includes(q))
+    .map(([k, u]) => {
+      const n = POEMS.filter(p => p.user === k).length;
+      return `<a href="#/u/${k}"><span>${esc(u.name)}<br><small>@${k}</small></span><small>${n} ${n === 1 ? 'poema' : 'poemas'}</small></a>`;
+    });
+  return rows.join('') || '<p class="empty">Ninguém com esse nome.</p>';
+}
+function viewSearch() {
+  theme(comboOf('manteiga')); chrome('default', true);
+  view.innerHTML = `<div class="page"><h1 class="kicker">Procurar pessoa</h1>
+    <input class="q" id="q" placeholder="@usuario ou nome" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="list" id="res">${userRows('')}</div></div>`;
+}
+
+function viewProfile(u) {
+  const U = USERS[u];
+  if (!U) { location.hash = '#/'; return; }
+  const combo = comboOf(U.combo);
+  theme(combo); chrome('default', true);
+  const mine = u === 'voce';
+  const list = POEMS.filter(p => p.user === u);
+  const n = list.length;
+  view.innerHTML = `<div class="page"><header class="ph">
+      <h1>${esc(U.name)}</h1><div class="handle">@${u}</div>
+      <p class="bio">${esc(U.bio)}</p>
+      <div class="count">${n} ${n === 1 ? 'poema' : 'poemas'}</div>
+      ${mine ? `<p style="margin:1.4rem 0 0"><button class="chip" data-act="toggle-pal">Cores da página</button></p>
+        <div class="swatches" ${palOpen ? '' : 'hidden'}>${COMBOS.map(c =>
+          `<button class="sw${c.id === U.combo ? ' on' : ''}" data-act="pick-combo" data-id="${c.id}" style="background:${c.bg};color:${c.fg}" aria-label="${c.name}">Aa</button>`).join('')}</div>` : ''}
+    </header>
+    ${list.map(p => `<div class="pp">${articleHTML(p, false)}</div>`).join('') || '<p class="empty" style="margin-top:3rem">Ainda sem poemas.</p>'}
+  </div>`;
+}
+
+/* ---------- criar poema ---------- */
+function sheetHTML() {
+  const opts = [{id:'auto', name:'Automático', desc:'A forma muda sozinha conforme você adiciona versos.'}, ...FORMS];
+  return `<button class="iconbtn sx" data-act="sheet-close" aria-label="Fechar">${ICON.x}</button>
+    <h2 class="kicker">Escolha a forma do poema</h2>`
+    + opts.map(o => `<button class="opt${draft.mode === o.id ? ' on' : ''}" data-act="form-pick" data-id="${o.id}"><strong>${o.name}</strong><span>${o.desc}</span></button>`).join('');
+}
+
+function updateMeta() {
+  const n = countV(draft.body);
+  const auto = draft.mode === 'auto';
+  const f = auto ? detect(n) : formOf(draft.mode);
+  $('chipTxt').textContent = f.name + (auto ? ' · auto' : '');
+  let m = `${n} ${word(n)}`;
+  if (!auto && f.n) m = n === f.n ? `✓ ${n} ${word(n)}` : `${n} de ${f.n} ${word(f.n)}`;
+  $('meta').textContent = m;
+  const pb = $('pubBtn');
+  if (pb) pb.disabled = !draft.body.trim();
+}
+
+function grow(t) {
+  t.style.height = 'auto';
+  t.style.height = Math.max(t.scrollHeight, Math.round(window.innerHeight * .4)) + 'px';
+}
+
+function viewCreate() {
+  theme(comboOf(draft.color)); chrome('create', false);
+  view.innerHTML = `<div class="create">
+      <button class="chip" id="chip" data-act="form-open"><span id="chipTxt"></span>${ICON.chev}</button>
+      <div class="meta" id="meta"></div>
+      <input class="t-in" id="tIn" placeholder="Título (opcional)" maxlength="120" autocomplete="off" value="${esc(draft.title)}">
+      <textarea class="b-in" id="bIn" placeholder="Escreva seu poema. Um verso por linha." maxlength="5000">${esc(draft.body)}</textarea>
+    </div>
+    <div class="dots">${POEM_COLORS.map(c =>
+      `<button class="dot${c.id === draft.color ? ' on' : ''}" data-act="color-pick" data-id="${c.id}" data-bg="${c.bg}" style="background:${c.bg}" aria-label="${c.name}"></button>`).join('')}</div>
+    <div class="sheet" id="sheet" hidden></div>`;
+  grow($('bIn'));
+  updateMeta();
+}
+
+function publish() {
+  const body = draft.body.replace(/\s+$/, '');
+  if (!body.trim()) return;
+  const n = countV(body);
+  const f = draft.mode === 'auto' ? detect(n) : formOf(draft.mode);
+  const p = {id:'p' + Date.now(), user:'voce', title:draft.title.trim(), body, color:draft.color, form:f.id, date:fmtDate(new Date())};
+  POEMS.unshift(p);
+  order.unshift(p);
+  draft = newDraft();
+  toast('Poema publicado. (Protótipo: ainda não salva em lugar nenhum.)');
+  location.hash = '#/u/voce';
+}
+
+/* ================= rotas ================= */
+function route() {
+  document.body.classList.remove('menu-open');
+  const [a, b] = location.hash.replace(/^#\/?/, '').split('/');
+  document.documentElement.classList.toggle('snap', a === '' || a === 'forma');
+  switch (a) {
+    case 'forma':     viewFeed(order.filter(p => p.form === b)); break;
+    case 'explorar':  viewExplore(); break;
+    case 'aleatorio': viewRandom(); break;
+    case 'procurar':  viewSearch(); break;
+    case 'u':         viewProfile(b); break;
+    case 'novo':      viewCreate(); break;
+    default:          viewFeed(order);
+  }
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+
+/* cor do menu = cor da página (ou do poema que está na tela) */
+function menuColors() {
+  let bg = app.style.getPropertyValue('--bg'), fg = app.style.getPropertyValue('--ink');
+  const sec = [...document.querySelectorAll('.poem')].find(el => {
+    const r = el.getBoundingClientRect();
+    return r.top <= window.innerHeight / 2 && r.bottom >= window.innerHeight / 2;
+  });
+  if (sec) { bg = sec.style.getPropertyValue('--pbg'); fg = sec.style.getPropertyValue('--pfg'); }
+  const m = $('menu');
+  m.style.setProperty('--m-bg', bg);
+  m.style.setProperty('--m-ink', fg);
+}
+
+/* ================= eventos ================= */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id;
+  switch (act) {
+    case 'menu-toggle':
+      if (document.body.classList.contains('menu-open')) document.body.classList.remove('menu-open');
+      else { menuColors(); document.body.classList.add('menu-open'); }
+      break;
+    case 'menu-close': document.body.classList.remove('menu-open'); break;
+    case 'another':    viewRandom(); break;
+    case 'toggle-pal': palOpen = !palOpen; viewProfile('voce'); break;
+    case 'pick-combo': USERS.voce.combo = id; viewProfile('voce'); break;
+    case 'close-create': location.hash = '#/'; break;
+    case 'form-open':  $('sheet').innerHTML = sheetHTML(); $('sheet').hidden = false; break;
+    case 'sheet-close': $('sheet').hidden = true; break;
+    case 'form-pick':  draft.mode = id; $('sheet').hidden = true; updateMeta(); break;
+    case 'color-pick':
+      draft.color = id; theme(comboOf(id));
+      document.querySelectorAll('.dot').forEach(d => d.classList.toggle('on', d.dataset.id === id));
+      break;
+    case 'publish':    publish(); break;
+  }
+});
+
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'q') $('res').innerHTML = userRows(t.value);
+  else if (t.id === 'tIn') draft.title = t.value;
+  else if (t.id === 'bIn') { draft.body = t.value; grow(t); updateMeta(); }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  document.body.classList.remove('menu-open');
+  const s = $('sheet'); if (s) s.hidden = true;
+});
+
+route();
+})();
+</script>
+</body>
+</html>
