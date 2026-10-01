@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Soneto — protótipo</title>
+<title>Soneto</title>
+<meta name="description" content="Soneto: um lugar para ler e publicar poemas.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%92%EF%B8%8F%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;600&display=swap" rel="stylesheet">
@@ -15,18 +17,17 @@
   --font:'Zilla Slab','Rockwell','Roboto Slab',Georgia,serif;
   --page-bg:#cfe3fa;
 }
-
 *,*::before,*::after{box-sizing:inherit}
 html{height:100%;background:var(--page-bg);scroll-padding-top:env(safe-area-inset-top,0px)}
 html.snap{scroll-snap-type:y proximity}
 body{margin:0;height:100%;background:var(--page-bg);font-family:var(--font);-webkit-text-size-adjust:100%}
 [hidden]{display:none!important}
-button{font-family:inherit}
+button,input,textarea{font-family:inherit}
 
 #app{--bg:#cfe3fa;--ink:#1b365d;--btn-bg:rgba(255,255,255,.55);min-height:100%;color:var(--ink)}
 #view{min-height:100%}
 
-/* ---------- barra superior e botões ---------- */
+/* ---------- barra superior ---------- */
 #topbar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
   padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 8px;pointer-events:none;color:var(--ink)}
 #topbar>*{pointer-events:auto}
@@ -46,47 +47,72 @@ button{font-family:inherit}
   background:var(--pbg);color:var(--pfg);scroll-snap-align:start}
 .poem article{width:100%;max-width:27rem}
 .p-title{margin:0;text-align:center;font-weight:600;font-size:1.7rem;line-height:1.2}
-.p-by{display:block;text-align:center;margin-top:.35rem;font-size:1.02rem;color:inherit;opacity:.85;text-decoration:none}
+.p-by{display:block;text-align:center;margin-top:.35rem;font-size:1.02rem;color:inherit;opacity:.9;text-decoration:none}
 .p-body{white-space:pre-wrap;margin:2rem auto 0;max-width:24rem;font-size:1.15rem;line-height:1.75;overflow-wrap:anywhere}
 .p-meta{margin-top:2rem;text-align:center;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;opacity:.7}
+.p-sent{margin-top:.7rem;text-align:center;font-size:.9rem;opacity:.85}
+.inl{color:inherit}
+.linklike{background:none;border:0;padding:0;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.seal{width:1.05em;height:1.05em;vertical-align:-.15em;margin-left:.25rem}
+.seal.big{width:1.5rem;height:1.5rem;margin-left:.4rem;vertical-align:-.2rem}
 .again{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 26px);z-index:20;
   border:0;border-radius:999px;background:var(--ink);color:var(--bg);padding:.8rem 1.5rem;font-size:1rem;font-weight:600;cursor:pointer}
 
 /* ---------- páginas simples ---------- */
 .page{min-height:100%;padding:6rem 1.6rem 7rem;background:var(--bg);color:var(--ink)}
+.page.narrow>*{max-width:28rem;margin-left:auto;margin-right:auto}
 .kicker{margin:0 0 2rem;text-align:center;font-size:.9rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase}
+.sub{margin:2rem auto .2rem;max-width:28rem;font-size:.8rem;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
+.lead{text-align:center;font-size:1.15rem;line-height:1.5;margin-top:0}
 .list{max-width:28rem;margin:0 auto}
 .list a{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1rem 0;color:inherit;text-decoration:none;font-size:1.3rem;
   border-bottom:1px solid color-mix(in srgb,var(--ink) 22%,transparent)}
 .list small{font-size:.9rem;opacity:.75}
-.empty{text-align:center;opacity:.75}
+.empty{text-align:center;opacity:.8;line-height:1.5}
+.loading{text-align:center;padding-top:38vh;opacity:.55;letter-spacing:.3em}
 .q{display:block;width:100%;max-width:28rem;margin:0 auto 1.4rem;background:transparent;border:0;border-bottom:2px solid var(--ink);outline:0;
-  color:inherit;font:inherit;font-size:1.5rem;padding:.4rem 0}
+  color:inherit;font:inherit;font-size:1.4rem;padding:.4rem 0;border-radius:0}
+textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:.7rem;font-size:1.05rem}
 .q::placeholder,.t-in::placeholder,.b-in::placeholder{color:color-mix(in srgb,var(--ink) 50%,transparent)}
+.btn{display:block;width:100%;max-width:28rem;margin:1rem auto 0;padding:.85rem 1rem;border-radius:999px;border:1.5px solid var(--ink);
+  background:var(--ink);color:var(--bg);font-size:1rem;font-weight:600;text-align:center;text-decoration:none;cursor:pointer}
+.btn.alt{background:transparent;color:var(--ink)}
+.btn:disabled{opacity:.5;cursor:default}
+.err{max-width:28rem;margin:0 auto 1rem;min-height:1.3em;font-weight:600;text-align:center;line-height:1.35}
+.or{text-align:center;opacity:.7;margin:1rem 0}
+.switch{text-align:center;margin-top:1.4rem}
+.atrow{display:flex;align-items:baseline;gap:.3rem;max-width:28rem;margin:0 auto}
+.atrow span{font-size:1.4rem}
+.hint{max-width:28rem;margin:-.8rem auto 1.4rem;font-size:.85rem;opacity:.75}
 
-/* ---------- perfil ---------- */
+/* ---------- perfil e autor ---------- */
 .ph{text-align:center}
 .ph h1{margin:0;font-size:2.1rem;font-weight:600}
-.handle{margin-top:.2rem;opacity:.8}
+.handle{margin-top:.2rem;opacity:.85}
 .bio{max-width:24rem;margin:1rem auto 0;line-height:1.5}
 .count{margin-top:.8rem;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;opacity:.7}
 .swatches{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:1.2rem auto 0;max-width:22rem}
 .sw{width:48px;height:48px;border-radius:12px;border:1.5px solid rgba(0,0,0,.2);font-size:1rem;font-weight:600;cursor:pointer}
 .sw.on{outline:2.5px solid var(--ink);outline-offset:3px}
 .pp{max-width:27rem;margin:3rem auto 0;padding-top:3rem;border-top:1px solid color-mix(in srgb,var(--ink) 25%,transparent)}
+.chip{display:inline-flex;align-items:center;gap:.4rem;border:1.5px solid currentColor;border-radius:999px;padding:.4rem .9rem;background:transparent;color:inherit;
+  font-weight:600;font-size:.85rem;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;text-decoration:none}
+.chip svg{width:16px;height:16px}
 
 /* ---------- criar poema ---------- */
-.create{min-height:100%;padding:5.4rem 1.4rem 9rem;display:flex;flex-direction:column;align-items:center;background:var(--bg);color:var(--ink)}
-.chip{display:inline-flex;align-items:center;gap:.4rem;border:1.5px solid currentColor;border-radius:999px;padding:.4rem .9rem;background:transparent;color:inherit;
-  font-weight:600;font-size:.85rem;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
-.chip svg{width:16px;height:16px}
+.create{min-height:100%;padding:5.4rem 1.4rem 11rem;display:flex;flex-direction:column;align-items:center;background:var(--bg);color:var(--ink)}
+.ctx{margin-bottom:.9rem;text-align:center;font-size:.95rem}
 .meta{margin-top:.6rem;min-height:1.3em;font-size:.9rem;opacity:.75}
 .t-in{width:100%;max-width:27rem;margin-top:1.4rem;background:transparent;border:0;outline:0;text-align:center;color:inherit;font:inherit;font-weight:600;font-size:1.7rem}
 .b-in{width:100%;max-width:24rem;margin-top:1.2rem;min-height:40vh;background:transparent;border:0;outline:0;resize:none;color:inherit;font:inherit;font-size:1.15rem;line-height:1.75}
-.dots{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:20;display:flex;gap:10px;
-  padding:10px 14px;border-radius:999px;background:var(--btn-bg);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.bottombar{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:20;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none}
+.bottombar>*{pointer-events:auto}
+.dots{display:flex;gap:10px;padding:10px 14px;border-radius:999px;background:var(--btn-bg);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .dot{width:26px;height:26px;border-radius:50%;border:1px solid rgba(0,0,0,.25);cursor:pointer;padding:0}
 .dot.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink)}
+.agree{display:flex;gap:.65rem;align-items:center;max-width:90vw;padding:.6rem .95rem;border-radius:16px;background:var(--btn-bg);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-size:.95rem;line-height:1.3;cursor:pointer}
+.agree input{width:1.3rem;height:1.3rem;flex:none;accent-color:var(--ink)}
 .sheet{position:fixed;inset:0;z-index:40;overflow:auto;background:var(--bg);color:var(--ink);
   padding:calc(env(safe-area-inset-top,0px) + 4.2rem) 1.4rem calc(env(safe-area-inset-bottom,0px) + 2rem)}
 .sheet .sx{position:absolute;top:calc(env(safe-area-inset-top,0px) + 10px);right:12px}
@@ -96,7 +122,7 @@ button{font-family:inherit}
 .opt span{display:block;margin-top:.3rem;font-size:.95rem;line-height:1.4;opacity:.85}
 .opt.on strong{text-decoration:underline;text-underline-offset:4px}
 
-/* ---------- menu (pequeno, na cor da página) ---------- */
+/* ---------- menu ---------- */
 #scrim{position:fixed;inset:0;z-index:50;pointer-events:none}
 .menu-open #scrim{pointer-events:auto}
 #menu{position:fixed;z-index:60;top:calc(env(safe-area-inset-top,0px) + 62px);left:12px;min-width:168px;padding:.35rem;border-radius:18px;
@@ -123,14 +149,27 @@ button{font-family:inherit}
     <a href="#/procurar" data-act="menu-close">Procurar</a>
   </nav>
 </div>
-
 <div id="toast" role="status"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (() => {
 'use strict';
 
-/* ================= dados do protótipo ================= */
+/* ================= configuração ================= */
+const SUPABASE_URL = 'https://prmhbjubcdbxnuxxaxgy.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_86pn0hWnXJOlUslDUDb2_w_YA5vPQud'; // chave pública: pode ficar no código
+const GOOGLE_ENABLED = false; // mude para true depois de configurar o login com Google no Supabase
+
+if (!window.supabase) {
+  document.body.innerHTML = '<p style="font-family:Georgia,serif;text-align:center;padding:30vh 1.5rem 0">Não consegui carregar o Soneto. Verifique sua conexão e recarregue a página.</p>';
+  return;
+}
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { flowType: 'pkce', detectSessionInUrl: true, persistSession: true, autoRefreshToken: true }
+});
+
+/* ================= dados fixos ================= */
 const COMBOS = [
   {id:'azul',     name:'Azul bebê',    bg:'#cfe3fa', fg:'#1b365d'},
   {id:'manteiga', name:'Manteiga',     bg:'#fff1a8', fg:'#5b4200'},
@@ -155,88 +194,25 @@ const FORMS = [
   {id:'decima',    name:'Décima',        n:10,   desc:'Dez versos.'},
   {id:'soneto',    name:'Soneto',        n:14,   desc:'Catorze versos: dois quartetos e dois tercetos. Nasceu na Sicília, no século XIII.'}
 ];
-
-const USERS = {
-  marina:  {name:'Marina Teles', bio:'Escrevo no intervalo do café.',            combo:'azul'},
-  joaquim: {name:'Joaquim Reis', bio:'Haicais, chuva e pouca pressa.',           combo:'manteiga'},
-  voce:    {name:'Você',         bio:'Esta é a sua página. Toque em "Cores da página" para mudá-la.', combo:'branco'}
-};
-
-const RAW = [
- {id:'p1', user:'marina', title:'Tarde', color:'azul', date:'30 set', body:
-`A tarde pousa mansa sobre o mar
-e a luz, cansada, deita-se no chão;
-guardo teu nome em fundo de canção
-que aprendi, sem querer, a decorar.
-
-Há palavras que sabem esperar
-no escuro de uma gaveta ou de uma mão
-e voltam, de repente, em solidão,
-vestidas de um antigo respirar.
-
-Não peço que me digas aonde vai,
-só deixa que o silêncio faça a ponte
-entre o que fica e aquilo que se esvai;
-
-e eu escrevo, em voz baixa, o horizonte,
-o resto de luz que sobre nós já cai
-e some, devagar, atrás do monte.`},
- {id:'p2', user:'joaquim', title:'Chuva', color:'manteiga', date:'29 set', body:
-`Chuva de manhã —
-a rua toda esqueceu
-o seu caminho.`},
- {id:'p3', user:'marina', title:'Sem pressa', color:'branco', date:'28 set', body:
-`Hoje acordei sem pressa
-e o café esfriou
-esperando que eu terminasse
-de olhar pela janela.
-
-Há dias em que a poesia
-é só isso:
-deixar a xícara em paz.`},
- {id:'p4', user:'joaquim', title:'Canto', color:'menta', date:'27 set', body:
-`Sobre o escuro da manhã
-o pássaro aprende a voz;
-cada canto é uma maçã
-que cai dentro de nós.`},
- {id:'p5', user:'voce', title:'Casa', color:'rosa', date:'26 set', body:
-`O verso é a menor casa
-onde cabe o mundo inteiro.`},
- {id:'p6', user:'voce', title:'Domingo', color:'lilas', date:'25 set', body:
-`Domingo é o dia em que as coisas
-voltam a ser do tamanho delas.
-O pão, a rua vazia,
-o sino que não pede nada.
-
-Eu também volto:
-pequeno, inteiro,
-sem nenhum prazo no bolso
-e um verso novo
-que ainda não tem nome.`},
- {id:'p7', user:'joaquim', title:'Verão', color:'pessego', date:'24 set', body:
-`Cigarra no muro —
-o calor também canta
-de olhos fechados.`}
-];
+const RESERVED = new Set(['soneto','admin','suporte','entrar','novo','explorar','aleatorio','procurar','autor','autores','voce','eu']);
 
 /* ================= utilidades ================= */
 const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const enc = encodeURIComponent;
+const dec = s => { try { return decodeURIComponent(s || ''); } catch (e) { return s || ''; } };
+const norm = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const countV = t => t.split('\n').map(s => s.trim()).filter(Boolean).length;
 const detect = n => FORMS.find(f => f.n === n) || FORMS[0];
 const comboOf = id => COMBOS.find(c => c.id === id) || COMBOS[0];
 const formOf = id => FORMS.find(f => f.id === id) || FORMS[0];
 const word = n => n === 1 ? 'verso' : 'versos';
 const MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-const fmtDate = d => d.getDate() + ' ' + MES[d.getMonth()];
+function fmtDate(d) {
+  const y = d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : '';
+  return d.getDate() + ' ' + MES[d.getMonth()] + y;
+}
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-
-const POEMS = RAW.map(p => ({...p, form: detect(countV(p.body)).id}));
-let order = shuffle(POEMS);
-const newDraft = () => ({title:'', body:'', color:'azul', mode:'auto'});
-let draft = newDraft();
-let palOpen = false;
-let lastRandom = null;
 
 const ICON = {
   menu: '<svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
@@ -244,8 +220,31 @@ const ICON = {
   x:    '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   chev: '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>'
 };
+function seal(kind, big) {
+  const gold = kind !== 'oficial';
+  const fill = gold ? '#d4a017' : '#2f5fd0', stroke = gold ? '#8a6508' : '#1c3a8a';
+  const label = gold ? 'Autor de domínio público' : 'Autor oficial';
+  return `<svg class="seal${big ? ' big' : ''}" viewBox="0 0 24 24" role="img" aria-label="${label}"><title>${label}</title>`
+    + `<circle cx="12" cy="12" r="10" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`
+    + `<path d="M12 6.5l1.7 3.5 3.8.5-2.8 2.6.7 3.8-3.4-1.9-3.4 1.9.7-3.8-2.8-2.6 3.8-.5z" fill="#fff8dc"/></svg>`;
+}
 
+/* ================= estado ================= */
 const app = $('app'), view = $('view'), topbar = $('topbar'), fab = $('fab'), toastEl = $('toast');
+let session = null, me = null, navId = 0;
+let authMode = 'login', pending = null, palOpen = false, lastRandomId = null;
+let authorsCache = null, createAuthor = null, searchTok = 0, searchTimer = null;
+const newDraft = () => ({title:'', body:'', color:'azul', mode:'auto', agree:false, ctx:''});
+let draft = newDraft();
+
+let toastTimer;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3400);
+}
+function fail(msg, e) { console.error(e); toast(msg); }
 
 function theme(c) {
   app.style.setProperty('--bg', c.bg);
@@ -255,109 +254,307 @@ function theme(c) {
 }
 
 function chrome(mode, showFab) {
+  const prof = me && me.display_name ? '#/u/' + enc(me.username) : (session ? '#/bem-vindo' : '#/entrar');
   topbar.innerHTML = mode === 'create'
     ? `<button class="iconbtn" data-act="close-create" aria-label="Fechar">${ICON.x}</button><span></span><button class="pub" id="pubBtn" data-act="publish" disabled>Publicar</button>`
-    : `<button class="iconbtn" data-act="menu-toggle" aria-label="Menu">${ICON.menu}</button><a class="wordmark" href="#/">soneto</a><a class="iconbtn" href="#/u/voce" aria-label="Minha página">${ICON.user}</a>`;
+    : `<button class="iconbtn" data-act="menu-toggle" aria-label="Menu">${ICON.menu}</button><a class="wordmark" href="#/">soneto</a><a class="iconbtn" href="${prof}" aria-label="Minha página">${ICON.user}</a>`;
   fab.hidden = !showFab;
 }
 
-let toastTimer;
-function toast(msg) {
-  toastEl.textContent = msg;
-  toastEl.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3200);
+function loading() { view.innerHTML = '<div class="page"><p class="loading">· · ·</p></div>'; }
+function showError(id, e) {
+  console.error(e);
+  if (id !== navId) return;
+  theme(COMBOS[0]); chrome('default', false);
+  view.innerHTML = '<div class="page"><p class="empty">Não consegui carregar agora.<br><button class="linklike" data-act="retry">Tentar de novo</button></p></div>';
+}
+function notFound(msg) {
+  theme(COMBOS[0]); chrome('default', true);
+  view.innerHTML = `<div class="page"><p class="empty">${esc(msg)}<br><a class="inl" href="#/">Voltar ao início</a></p></div>`;
+}
+
+/* ================= dados do Supabase ================= */
+const SEL = 'id,title,body,form,color,created_at,user_id,submitted_by,sent_by_platform,'
+  + 'owner:profiles!user_id(username,display_name),'
+  + 'author:authors(slug,name,kind),'
+  + 'submitter:profiles!submitted_by(username)';
+
+async function fetchPoems(build) {
+  const { data, error } = await build(sb.from('poems').select(SEL));
+  if (error) throw error;
+  return data || [];
+}
+async function getAuthors() {
+  if (authorsCache) return authorsCache;
+  const { data, error } = await sb.from('authors').select('id,slug,name,kind,birth_year,death_year,bio').order('name');
+  if (error) throw error;
+  authorsCache = data || [];
+  return authorsCache;
+}
+async function loadMe() {
+  if (!session) { me = null; return; }
+  const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+  if (error) console.error(error);
+  me = data || null;
 }
 
 /* ================= blocos de poema ================= */
-function articleHTML(p, byline) {
+function bylineHTML(p) {
+  if (p.author) return `<a class="p-by" href="#/a/${enc(p.author.slug)}">por ${esc(p.author.name)}${seal(p.author.kind)}</a>`;
+  if (p.owner) return `<a class="p-by" href="#/u/${enc(p.owner.username)}">por ${esc(p.owner.display_name || '@' + p.owner.username)}</a>`;
+  return '';
+}
+function sentByHTML(p) {
+  if (!p.author) return '';
+  const who = p.sent_by_platform ? 'Soneto'
+    : p.submitter ? `<a class="inl" href="#/u/${enc(p.submitter.username)}">@${esc(p.submitter.username)}</a>` : 'um usuário';
+  return `<div class="p-sent">Enviado por ${who} · <button class="linklike" data-act="report" data-id="${esc(p.id)}">Denunciar autoria</button></div>`;
+}
+function articleHTML(p, o) {
+  o = o || {};
   const f = formOf(p.form);
-  return `<article>`
+  const canDel = o.tools && me && (p.user_id === me.id || p.submitted_by === me.id);
+  return '<article>'
     + (p.title ? `<h2 class="p-title">${esc(p.title)}</h2>` : '')
-    + (byline ? `<a class="p-by" href="#/u/${p.user}">por ${esc(USERS[p.user].name)}</a>` : '')
+    + (o.byline ? bylineHTML(p) : '')
     + `<div class="p-body">${esc(p.body)}</div>`
-    + `<div class="p-meta">${f.name} · ${p.date}</div></article>`;
+    + `<div class="p-meta">${esc(f.name)} · ${fmtDate(new Date(p.created_at))}</div>`
+    + sentByHTML(p)
+    + (canDel ? `<div class="p-sent"><button class="linklike" data-act="del" data-id="${esc(p.id)}">Apagar</button></div>` : '')
+    + '</article>';
 }
 function sectionHTML(p) {
   const c = comboOf(p.color);
-  return `<section class="poem" style="--pbg:${c.bg};--pfg:${c.fg}">${articleHTML(p, true)}</section>`;
+  return `<section class="poem" style="--pbg:${c.bg};--pfg:${c.fg}">${articleHTML(p, {byline:true})}</section>`;
+}
+function emptyFeed(msg) {
+  theme(COMBOS[0]); chrome('default', true);
+  view.innerHTML = `<div class="page"><p class="empty">${msg}</p></div>`;
 }
 
 /* ================= telas ================= */
-function viewFeed(list) {
-  chrome('default', true);
-  if (!list.length) {
-    theme(COMBOS[0]);
-    view.innerHTML = '<div class="page"><p class="empty">Nenhum poema aqui ainda.</p></div>';
-    return;
-  }
+async function viewFeed(id, form) {
+  chrome('default', true); theme(COMBOS[0]); loading();
+  let list;
+  try {
+    list = await fetchPoems(q => { if (form) q = q.eq('form', form); return q.order('created_at', {ascending:false}).limit(60); });
+  } catch (e) { return showError(id, e); }
+  if (id !== navId) return;
+  if (!list.length) return emptyFeed(form ? 'Nenhum poema nessa forma ainda.' : 'Ainda não há poemas por aqui.<br>Que tal ser a primeira pessoa a publicar?');
+  list = shuffle(list);
   theme(comboOf(list[0].color));
   view.innerHTML = list.map(sectionHTML).join('');
 }
 
-function viewExplore() {
-  theme(COMBOS[0]); chrome('default', true);
-  const rows = FORMS.map(f => [f, POEMS.filter(p => p.form === f.id).length]).filter(r => r[1] > 0);
-  view.innerHTML = `<div class="page"><h1 class="kicker">Explorar por forma</h1><div class="list">`
-    + `<a href="#/"><span>Todos os poemas</span><small>${POEMS.length}</small></a>`
-    + rows.map(([f, n]) => `<a href="#/forma/${f.id}"><span>${f.name}</span><small>${n}</small></a>`).join('')
-    + `</div></div>`;
-}
-
-function viewRandom() {
-  const pool = POEMS.filter(p => p.id !== lastRandom);
+async function viewRandom(id) {
+  chrome('default', true); theme(COMBOS[0]);
+  let list;
+  try { list = await fetchPoems(q => q.order('created_at', {ascending:false}).limit(60)); }
+  catch (e) { return showError(id, e); }
+  if (id !== navId) return;
+  if (!list.length) return emptyFeed('Ainda não há poemas por aqui.');
+  const pool = list.length > 1 ? list.filter(p => p.id !== lastRandomId) : list;
   const p = pool[Math.floor(Math.random() * pool.length)];
-  lastRandom = p.id;
-  theme(comboOf(p.color)); chrome('default', true);
+  lastRandomId = p.id;
+  theme(comboOf(p.color));
   view.innerHTML = sectionHTML(p) + '<button class="again" data-act="another">Outro poema</button>';
   window.scrollTo(0, 0);
 }
 
-function userRows(q) {
-  q = q.trim().toLowerCase().replace(/^@/, '');
-  const rows = Object.entries(USERS)
-    .filter(([k, u]) => !q || k.includes(q) || u.name.toLowerCase().includes(q))
-    .map(([k, u]) => {
-      const n = POEMS.filter(p => p.user === k).length;
-      return `<a href="#/u/${k}"><span>${esc(u.name)}<br><small>@${k}</small></span><small>${n} ${n === 1 ? 'poema' : 'poemas'}</small></a>`;
-    });
-  return rows.join('') || '<p class="empty">Ninguém com esse nome.</p>';
-}
-function viewSearch() {
-  theme(comboOf('manteiga')); chrome('default', true);
-  view.innerHTML = `<div class="page"><h1 class="kicker">Procurar pessoa</h1>
-    <input class="q" id="q" placeholder="@usuario ou nome" autocomplete="off" autocapitalize="off" spellcheck="false">
-    <div class="list" id="res">${userRows('')}</div></div>`;
+function authorRows(list) {
+  return list.map(a => {
+    const yrs = (a.birth_year || '') + (a.death_year ? '–' + a.death_year : '');
+    return `<a href="#/a/${enc(a.slug)}"><span>${esc(a.name)}${seal(a.kind)}<br><small>${esc(yrs)}</small></span><small>autor</small></a>`;
+  }).join('');
 }
 
-function viewProfile(u) {
-  const U = USERS[u];
-  if (!U) { location.hash = '#/'; return; }
-  const combo = comboOf(U.combo);
-  theme(combo); chrome('default', true);
-  const mine = u === 'voce';
-  const list = POEMS.filter(p => p.user === u);
-  const n = list.length;
+async function viewExplore(id) {
+  theme(COMBOS[0]); chrome('default', true); loading();
+  let authors;
+  try { authors = await getAuthors(); } catch (e) { return showError(id, e); }
+  if (id !== navId) return;
+  view.innerHTML = '<div class="page"><h1 class="kicker">Explorar</h1>'
+    + '<h2 class="sub">Autores</h2><div class="list">' + authorRows(authors) + '</div>'
+    + '<h2 class="sub">Formas</h2><div class="list"><a href="#/"><span>Todos os poemas</span></a>'
+    + FORMS.map(f => `<a href="#/forma/${f.id}"><span>${esc(f.name)}</span></a>`).join('')
+    + '</div></div>';
+}
+
+function viewSearch() {
+  theme(COMBOS[1]); chrome('default', true);
+  view.innerHTML = '<div class="page"><h1 class="kicker">Procurar</h1>'
+    + '<input class="q" id="q" placeholder="Nome ou @usuario" autocomplete="off" autocapitalize="off" spellcheck="false">'
+    + '<div id="res"></div></div>';
+  runSearch('');
+}
+async function runSearch(q) {
+  const tok = ++searchTok;
+  const raw = q.trim().replace(/^@/, '');
+  let authors = [], people = [];
+  try {
+    authors = (await getAuthors()).filter(a => !raw || norm(a.name).includes(norm(raw)));
+    const safe = raw.replace(/[%,()*\\"'.:]/g, ' ').trim();
+    if (safe) {
+      const { data } = await sb.from('profiles').select('username,display_name')
+        .not('display_name', 'is', null)
+        .or(`username.ilike.*${safe}*,display_name.ilike.*${safe}*`).limit(20);
+      people = data || [];
+    }
+  } catch (e) { console.error(e); }
+  if (tok !== searchTok || !$('res')) return;
+  let html = '';
+  if (authors.length) html += '<h2 class="sub">Autores</h2><div class="list">' + authorRows(authors) + '</div>';
+  if (people.length) html += '<h2 class="sub">Pessoas</h2><div class="list">'
+    + people.map(u => `<a href="#/u/${enc(u.username)}"><span>${esc(u.display_name)}<br><small>@${esc(u.username)}</small></span></a>`).join('') + '</div>';
+  $('res').innerHTML = html || '<p class="empty">Ninguém com esse nome.</p>';
+}
+
+async function viewProfile(id, uname, quiet) {
+  chrome('default', true);
+  if (!quiet) { theme(COMBOS[0]); loading(); }
+  let prof, poems;
+  try {
+    const r = await sb.from('profiles').select('*').eq('username', uname).maybeSingle();
+    if (r.error) throw r.error;
+    prof = r.data;
+    if (prof && prof.display_name) poems = await fetchPoems(q => q.eq('user_id', prof.id).order('created_at', {ascending:false}).limit(100));
+  } catch (e) { return showError(id, e); }
+  if (id !== navId) return;
+  if (!prof || !prof.display_name) return notFound('Essa pessoa não foi encontrada.');
+  theme(comboOf(prof.theme));
+  const mine = me && me.id === prof.id;
+  const n = poems.length;
   view.innerHTML = `<div class="page"><header class="ph">
-      <h1>${esc(U.name)}</h1><div class="handle">@${u}</div>
-      <p class="bio">${esc(U.bio)}</p>
+      <h1>${esc(prof.display_name)}</h1><div class="handle">@${esc(prof.username)}</div>
+      ${prof.bio ? `<p class="bio">${esc(prof.bio)}</p>` : ''}
       <div class="count">${n} ${n === 1 ? 'poema' : 'poemas'}</div>
       ${mine ? `<p style="margin:1.4rem 0 0"><button class="chip" data-act="toggle-pal">Cores da página</button></p>
         <div class="swatches" ${palOpen ? '' : 'hidden'}>${COMBOS.map(c =>
-          `<button class="sw${c.id === U.combo ? ' on' : ''}" data-act="pick-combo" data-id="${c.id}" style="background:${c.bg};color:${c.fg}" aria-label="${c.name}">Aa</button>`).join('')}</div>` : ''}
+          `<button class="sw${c.id === prof.theme ? ' on' : ''}" data-act="pick-combo" data-id="${c.id}" style="background:${c.bg};color:${c.fg}" aria-label="${esc(c.name)}">Aa</button>`).join('')}</div>
+        <p style="margin:1.4rem 0 0"><button class="linklike" data-act="logout">Sair da conta</button></p>` : ''}
     </header>
-    ${list.map(p => `<div class="pp">${articleHTML(p, false)}</div>`).join('') || '<p class="empty" style="margin-top:3rem">Ainda sem poemas.</p>'}
+    ${poems.map(p => `<div class="pp">${articleHTML(p, {tools:true})}</div>`).join('')
+      || `<p class="empty" style="margin-top:3rem">${mine ? 'Você ainda não publicou nenhum poema.<br>Toque no + para escrever o primeiro.' : 'Ainda sem poemas.'}</p>`}
   </div>`;
 }
 
-/* ---------- criar poema ---------- */
+async function viewAuthor(id, slug, quiet) {
+  chrome('default', true);
+  if (!quiet) { theme(COMBOS[0]); loading(); }
+  let author, poems;
+  try {
+    author = (await getAuthors()).find(a => a.slug === slug);
+    if (author) poems = await fetchPoems(q => q.eq('author_id', author.id).order('created_at', {ascending:false}).limit(100));
+  } catch (e) { return showError(id, e); }
+  if (id !== navId) return;
+  if (!author) return notFound('Esse autor não foi encontrado.');
+  const pd = author.kind === 'dominio_publico';
+  theme(comboOf(pd ? 'manteiga' : 'azul'));
+  const yrs = (author.birth_year || '') + (author.death_year ? ' – ' + author.death_year : '');
+  const n = poems.length;
+  view.innerHTML = `<div class="page"><header class="ph">
+      <h1>${esc(author.name)}${seal(author.kind, true)}</h1>
+      <div class="handle">${esc(yrs)}</div>
+      <div class="count">${pd ? 'Autor de domínio público' : 'Autor oficial'}</div>
+      ${author.bio ? `<p class="bio">${esc(author.bio)}</p>` : ''}
+      <div class="count">${n} ${n === 1 ? 'poema' : 'poemas'}</div>
+      ${pd ? `<a class="btn" href="#/novo/${enc(author.slug)}">Contribuir com um poema</a>` : ''}
+    </header>
+    ${poems.map(p => `<div class="pp">${articleHTML(p, {tools:true})}</div>`).join('')
+      || '<p class="empty" style="margin-top:3rem">Ainda sem poemas. Contribua com o primeiro.</p>'}
+  </div>`;
+}
+
+/* ---------- entrar / criar conta ---------- */
+function viewAuth() {
+  theme(COMBOS[0]); chrome('default', false);
+  const login = authMode === 'login';
+  view.innerHTML = `<div class="page narrow"><h1 class="kicker">${login ? 'Entrar' : 'Criar conta'}</h1>
+    ${GOOGLE_ENABLED ? '<button class="btn alt" data-act="google">Continuar com Google</button><p class="or">ou</p>' : ''}
+    <input class="q" id="em" type="email" placeholder="E-mail" autocomplete="email" autocapitalize="off" spellcheck="false">
+    <input class="q" id="pw" type="password" placeholder="Senha" autocomplete="${login ? 'current-password' : 'new-password'}">
+    <div class="err" id="err"></div>
+    <button class="btn" id="goBtn" data-act="auth-submit">${login ? 'Entrar' : 'Criar conta'}</button>
+    <p class="switch">${login ? 'Ainda não tem conta?' : 'Já tem conta?'} <button class="linklike" data-act="auth-switch">${login ? 'Criar conta' : 'Entrar'}</button></p></div>`;
+}
+function trErr(e) {
+  const m = String(e && e.message || '').toLowerCase();
+  if (m.includes('invalid login')) return 'E-mail ou senha incorretos.';
+  if (m.includes('already registered') || m.includes('already been registered')) return 'Esse e-mail já tem conta. Tente entrar.';
+  if (m.includes('password should be')) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if (m.includes('valid email') || m.includes('invalid email')) return 'Esse e-mail não parece válido.';
+  if (m.includes('rate limit')) return 'Muitas tentativas. Espere um pouco e tente de novo.';
+  if (m.includes('not confirmed')) return 'Confirme seu e-mail antes de entrar.';
+  return 'Algo deu errado. Tente de novo.';
+}
+function setErr(t) { const e = $('err'); if (e) e.textContent = t || ''; }
+
+async function doAuth() {
+  const email = $('em').value.trim(), pw = $('pw').value;
+  setErr('');
+  if (!email || !pw) return setErr('Preencha o e-mail e a senha.');
+  if (authMode === 'signup' && pw.length < 6) return setErr('A senha precisa ter pelo menos 6 caracteres.');
+  const btn = $('goBtn'); btn.disabled = true;
+  try {
+    const r = authMode === 'signup'
+      ? await sb.auth.signUp({ email, password: pw })
+      : await sb.auth.signInWithPassword({ email, password: pw });
+    if (r.error) { setErr(trErr(r.error)); return; }
+    if (!r.data.session) { setErr('Enviamos um e-mail de confirmação. Confirme e depois entre.'); return; }
+    session = r.data.session;
+    await loadMe();
+    if (me && me.display_name) { const d = pending || '#/'; pending = null; location.hash = d; }
+    else location.hash = '#/bem-vindo';
+  } catch (e) { console.error(e); setErr('Algo deu errado. Tente de novo.'); }
+  finally { if ($('goBtn')) $('goBtn').disabled = false; }
+}
+async function doGoogle() {
+  try { sessionStorage.setItem('soneto_pending', pending || ''); } catch (e) {}
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+  if (error) setErr('Não consegui abrir o login com Google.');
+}
+
+/* ---------- bem-vindo: nome e @ ---------- */
+function viewOnboard() {
+  theme(COMBOS[0]); chrome('default', false);
+  view.innerHTML = `<div class="page narrow"><h1 class="kicker">Bem-vindo ao Soneto</h1>
+    <p class="lead">Como você quer aparecer?</p>
+    <input class="q" id="dn" maxlength="50" placeholder="Seu nome" autocomplete="name" value="${esc(me && me.display_name || '')}">
+    <div class="atrow"><span>@</span><input class="q" id="un" maxlength="30" placeholder="usuario" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+    <p class="hint">Seu @ é único: de 3 a 30 letras minúsculas, números ou _.</p>
+    <input class="q" id="bio" maxlength="200" placeholder="Uma frase sobre você (opcional)">
+    <div class="err" id="err"></div>
+    <button class="btn" id="obBtn" data-act="onboard">Continuar</button></div>`;
+}
+async function doOnboard() {
+  const dn = $('dn').value.trim(), un = $('un').value.trim(), bio = $('bio').value.trim();
+  setErr('');
+  if (dn.length < 2) return setErr('Escreva seu nome (pelo menos 2 letras).');
+  if (!/^[a-z0-9_]{3,30}$/.test(un)) return setErr('O @ deve ter de 3 a 30 caracteres: letras minúsculas, números ou _.');
+  if (un.startsWith('poeta_') || RESERVED.has(un)) return setErr('Esse @ não está disponível. Escolha outro.');
+  if (!me) return setErr('Não encontrei seu perfil. Saia e entre de novo.');
+  const btn = $('obBtn'); btn.disabled = true;
+  try {
+    const { data, error } = await sb.from('profiles')
+      .update({ display_name: dn, username: un, bio: bio || null }).eq('id', me.id).select('*').single();
+    if (error) {
+      if (error.code === '23505') setErr('Esse @ já está em uso. Escolha outro.');
+      else { console.error(error); setErr('Não consegui salvar. Tente de novo.'); }
+      return;
+    }
+    me = data;
+    const d = pending || ('#/u/' + enc(me.username)); pending = null;
+    location.hash = d;
+  } finally { if ($('obBtn')) $('obBtn').disabled = false; }
+}
+
+/* ---------- criar poema / contribuir ---------- */
 function sheetHTML() {
   const opts = [{id:'auto', name:'Automático', desc:'A forma muda sozinha conforme você adiciona versos.'}, ...FORMS];
   return `<button class="iconbtn sx" data-act="sheet-close" aria-label="Fechar">${ICON.x}</button>
     <h2 class="kicker">Escolha a forma do poema</h2>`
-    + opts.map(o => `<button class="opt${draft.mode === o.id ? ' on' : ''}" data-act="form-pick" data-id="${o.id}"><strong>${o.name}</strong><span>${o.desc}</span></button>`).join('');
+    + opts.map(o => `<button class="opt${draft.mode === o.id ? ' on' : ''}" data-act="form-pick" data-id="${o.id}"><strong>${esc(o.name)}</strong><span>${esc(o.desc)}</span></button>`).join('');
 }
-
 function updateMeta() {
   const n = countV(draft.body);
   const auto = draft.mode === 'auto';
@@ -367,61 +564,91 @@ function updateMeta() {
   if (!auto && f.n) m = n === f.n ? `✓ ${n} ${word(n)}` : `${n} de ${f.n} ${word(f.n)}`;
   $('meta').textContent = m;
   const pb = $('pubBtn');
-  if (pb) pb.disabled = !draft.body.trim();
+  if (pb) pb.disabled = !draft.body.trim() || (!!createAuthor && !draft.agree);
 }
-
 function grow(t) {
   t.style.height = 'auto';
   t.style.height = Math.max(t.scrollHeight, Math.round(window.innerHeight * .4)) + 'px';
 }
-
-function viewCreate() {
+async function viewCreate(id, slug) {
+  createAuthor = null;
+  if (slug) {
+    theme(COMBOS[0]); chrome('default', false); loading();
+    try { createAuthor = (await getAuthors()).find(a => a.slug === slug) || null; }
+    catch (e) { return showError(id, e); }
+    if (id !== navId) return;
+    if (!createAuthor || createAuthor.kind !== 'dominio_publico') { createAuthor = null; return notFound('Não é possível contribuir com esse autor.'); }
+  }
+  const ctx = slug || '';
+  if (draft.ctx !== ctx) { draft = newDraft(); draft.ctx = ctx; }
   theme(comboOf(draft.color)); chrome('create', false);
   view.innerHTML = `<div class="create">
+      ${createAuthor ? `<div class="ctx">Contribuindo com <strong>${esc(createAuthor.name)}</strong>${seal(createAuthor.kind)}</div>` : ''}
       <button class="chip" id="chip" data-act="form-open"><span id="chipTxt"></span>${ICON.chev}</button>
       <div class="meta" id="meta"></div>
       <input class="t-in" id="tIn" placeholder="Título (opcional)" maxlength="120" autocomplete="off" value="${esc(draft.title)}">
       <textarea class="b-in" id="bIn" placeholder="Escreva seu poema. Um verso por linha." maxlength="5000">${esc(draft.body)}</textarea>
     </div>
-    <div class="dots">${POEM_COLORS.map(c =>
-      `<button class="dot${c.id === draft.color ? ' on' : ''}" data-act="color-pick" data-id="${c.id}" data-bg="${c.bg}" style="background:${c.bg}" aria-label="${c.name}"></button>`).join('')}</div>
+    <div class="bottombar">
+      ${createAuthor ? `<label class="agree"><input type="checkbox" id="agree" ${draft.agree ? 'checked' : ''}><span>Concordo que este poema pertence a ${esc(createAuthor.name)}.</span></label>` : ''}
+      <div class="dots">${POEM_COLORS.map(c =>
+        `<button class="dot${c.id === draft.color ? ' on' : ''}" data-act="color-pick" data-id="${c.id}" style="background:${c.bg}" aria-label="${esc(c.name)}"></button>`).join('')}</div>
+    </div>
     <div class="sheet" id="sheet" hidden></div>`;
   grow($('bIn'));
   updateMeta();
 }
-
-function publish() {
+async function publish() {
+  if (!session || !me) return;
   const body = draft.body.replace(/\s+$/, '');
   if (!body.trim()) return;
+  if (createAuthor && !draft.agree) return;
   const n = countV(body);
   const f = draft.mode === 'auto' ? detect(n) : formOf(draft.mode);
-  const p = {id:'p' + Date.now(), user:'voce', title:draft.title.trim(), body, color:draft.color, form:f.id, date:fmtDate(new Date())};
-  POEMS.unshift(p);
-  order.unshift(p);
+  const row = { title: draft.title.trim() || null, body, form: f.id, color: draft.color, submitted_by: me.id, sent_by_platform: false };
+  if (createAuthor) { row.author_id = createAuthor.id; row.user_id = null; row.authorship_confirmed = true; }
+  else { row.user_id = me.id; row.author_id = null; }
+  const pb = $('pubBtn'); if (pb) pb.disabled = true;
+  const { error } = await sb.from('poems').insert(row);
+  if (error) { fail('Não consegui publicar. Tente de novo.', error); updateMeta(); return; }
+  const dest = createAuthor ? '#/a/' + enc(createAuthor.slug) : '#/u/' + enc(me.username);
   draft = newDraft();
-  toast('Poema publicado. (Protótipo: ainda não salva em lugar nenhum.)');
-  location.hash = '#/u/voce';
+  toast('Poema publicado.');
+  location.hash = dest;
 }
 
-/* ================= rotas ================= */
-function route() {
-  document.body.classList.remove('menu-open');
-  const [a, b] = location.hash.replace(/^#\/?/, '').split('/');
-  document.documentElement.classList.toggle('snap', a === '' || a === 'forma');
-  switch (a) {
-    case 'forma':     viewFeed(order.filter(p => p.form === b)); break;
-    case 'explorar':  viewExplore(); break;
-    case 'aleatorio': viewRandom(); break;
-    case 'procurar':  viewSearch(); break;
-    case 'u':         viewProfile(b); break;
-    case 'novo':      viewCreate(); break;
-    default:          viewFeed(order);
+/* ---------- denunciar autoria ---------- */
+function openReport(poemId) {
+  if (!session) { pending = location.hash; location.hash = '#/entrar'; return; }
+  closeReport();
+  const o = document.createElement('div');
+  o.className = 'sheet'; o.id = 'reportSheet';
+  o.innerHTML = `<button class="iconbtn sx" data-act="report-close" aria-label="Fechar">${ICON.x}</button>
+    <h2 class="kicker">Denunciar autoria</h2>
+    <p class="lead">Este poema não pertence a este autor? Conte o que você sabe.</p>
+    <textarea class="q" id="rsn" rows="4" maxlength="500" placeholder="Por exemplo: este poema é de outra pessoa."></textarea>
+    <div class="err" id="rErr"></div>
+    <button class="btn" id="rBtn" data-act="report-send" data-id="${esc(poemId)}">Enviar denúncia</button>
+    <button class="btn alt" data-act="report-close">Cancelar</button>`;
+  app.appendChild(o);
+}
+function closeReport() { const o = $('reportSheet'); if (o) o.remove(); }
+async function sendReport(poemId) {
+  const reason = $('rsn').value.trim();
+  if (reason.length < 3) { $('rErr').textContent = 'Escreva ao menos uma frase curta.'; return; }
+  $('rBtn').disabled = true;
+  const { error } = await sb.from('reports').insert({ poem_id: poemId, reporter_id: me.id, reason });
+  if (error) {
+    $('rBtn').disabled = false;
+    $('rErr').textContent = error.code === '23505' ? 'Você já denunciou este poema.' : 'Não consegui enviar. Tente de novo.';
+    if (error.code !== '23505') console.error(error);
+    return;
   }
-  window.scrollTo(0, 0);
+  closeReport();
+  toast('Denúncia enviada. Obrigado.');
 }
-window.addEventListener('hashchange', route);
 
-/* cor do menu = cor da página (ou do poema que está na tela) */
+/* ================= menu ================= */
 function menuColors() {
   let bg = app.style.getPropertyValue('--bg'), fg = app.style.getPropertyValue('--ink');
   const sec = [...document.querySelectorAll('.poem')].find(el => {
@@ -434,8 +661,36 @@ function menuColors() {
   m.style.setProperty('--m-ink', fg);
 }
 
+/* ================= rotas ================= */
+async function route() {
+  const id = ++navId;
+  document.body.classList.remove('menu-open');
+  closeReport();
+  const parts = location.hash.replace(/^#\/?/, '').split('/').map(dec);
+  const a = parts[0], b = parts[1];
+  window.scrollTo(0, 0);
+
+  if ((a === 'novo' || a === 'bem-vindo') && !session) { pending = location.hash; location.hash = '#/entrar'; return; }
+  if (session && me && !me.display_name && a !== 'bem-vindo') { location.hash = '#/bem-vindo'; return; }
+  if (session && a === 'entrar') { location.hash = '#/'; return; }
+
+  document.documentElement.classList.toggle('snap', a === '' || a === 'forma');
+  switch (a) {
+    case 'forma':      return viewFeed(id, b);
+    case 'explorar':   return viewExplore(id);
+    case 'aleatorio':  return viewRandom(id);
+    case 'procurar':   return viewSearch();
+    case 'u':          return viewProfile(id, b);
+    case 'a':          return viewAuthor(id, b);
+    case 'novo':       return viewCreate(id, b);
+    case 'entrar':     return viewAuth();
+    case 'bem-vindo':  return viewOnboard();
+    default:           return viewFeed(id);
+  }
+}
+
 /* ================= eventos ================= */
-document.addEventListener('click', e => {
+document.addEventListener('click', async e => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
   const act = el.dataset.act, id = el.dataset.id;
@@ -445,35 +700,91 @@ document.addEventListener('click', e => {
       else { menuColors(); document.body.classList.add('menu-open'); }
       break;
     case 'menu-close': document.body.classList.remove('menu-open'); break;
-    case 'another':    viewRandom(); break;
-    case 'toggle-pal': palOpen = !palOpen; viewProfile('voce'); break;
-    case 'pick-combo': USERS.voce.combo = id; viewProfile('voce'); break;
-    case 'close-create': location.hash = '#/'; break;
-    case 'form-open':  $('sheet').innerHTML = sheetHTML(); $('sheet').hidden = false; break;
+    case 'retry': route(); break;
+    case 'another': viewRandom(navId); break;
+
+    case 'auth-switch': authMode = authMode === 'login' ? 'signup' : 'login'; viewAuth(); break;
+    case 'auth-submit': doAuth(); break;
+    case 'google': doGoogle(); break;
+    case 'onboard': doOnboard(); break;
+    case 'logout':
+      await sb.auth.signOut();
+      session = null; me = null; palOpen = false;
+      toast('Você saiu da conta.');
+      if (location.hash === '#/') route(); else location.hash = '#/';
+      break;
+
+    case 'toggle-pal': palOpen = !palOpen; viewProfile(navId, me.username, true); break;
+    case 'pick-combo': {
+      const { error } = await sb.from('profiles').update({ theme: id }).eq('id', me.id);
+      if (error) { fail('Não consegui salvar a cor. Rodou o SQL do perfil?', error); break; }
+      me.theme = id;
+      viewProfile(navId, me.username, true);
+      break;
+    }
+
+    case 'close-create': location.hash = createAuthor ? '#/a/' + enc(createAuthor.slug) : '#/'; break;
+    case 'form-open': $('sheet').innerHTML = sheetHTML(); $('sheet').hidden = false; break;
     case 'sheet-close': $('sheet').hidden = true; break;
-    case 'form-pick':  draft.mode = id; $('sheet').hidden = true; updateMeta(); break;
+    case 'form-pick': draft.mode = id; $('sheet').hidden = true; updateMeta(); break;
     case 'color-pick':
       draft.color = id; theme(comboOf(id));
       document.querySelectorAll('.dot').forEach(d => d.classList.toggle('on', d.dataset.id === id));
       break;
-    case 'publish':    publish(); break;
+    case 'publish': publish(); break;
+
+    case 'report': openReport(id); break;
+    case 'report-close': closeReport(); break;
+    case 'report-send': sendReport(id); break;
+
+    case 'del': {
+      if (!confirm('Apagar este poema? Isso não pode ser desfeito.')) break;
+      const { error } = await sb.from('poems').delete().eq('id', id);
+      if (error) { fail('Não consegui apagar.', error); break; }
+      toast('Poema apagado.');
+      route();
+      break;
+    }
   }
 });
 
 document.addEventListener('input', e => {
   const t = e.target;
-  if (t.id === 'q') $('res').innerHTML = userRows(t.value);
+  if (t.id === 'q') { clearTimeout(searchTimer); const v = t.value; searchTimer = setTimeout(() => runSearch(v), 250); }
   else if (t.id === 'tIn') draft.title = t.value;
   else if (t.id === 'bIn') { draft.body = t.value; grow(t); updateMeta(); }
+  else if (t.id === 'un') { const v = t.value.toLowerCase().replace(/[^a-z0-9_]/g, ''); if (v !== t.value) t.value = v; }
 });
-
+document.addEventListener('change', e => {
+  if (e.target.id === 'agree') { draft.agree = e.target.checked; updateMeta(); }
+});
 document.addEventListener('keydown', e => {
-  if (e.key !== 'Escape') return;
-  document.body.classList.remove('menu-open');
-  const s = $('sheet'); if (s) s.hidden = true;
+  if (e.key === 'Escape') {
+    document.body.classList.remove('menu-open');
+    const s = $('sheet'); if (s) s.hidden = true;
+    closeReport();
+  } else if (e.key === 'Enter' && (e.target.id === 'em' || e.target.id === 'pw')) { e.preventDefault(); doAuth(); }
+  else if (e.key === 'Enter' && (e.target.id === 'dn' || e.target.id === 'un' || e.target.id === 'bio')) { e.preventDefault(); doOnboard(); }
 });
 
-route();
+sb.auth.onAuthStateChange((_evt, s) => { session = s; if (!s) me = null; });
+window.addEventListener('hashchange', route);
+
+/* ================= início ================= */
+(async () => {
+  try {
+    const { data } = await sb.auth.getSession();
+    session = data.session;
+    if (session) await loadMe();
+  } catch (e) { console.error(e); }
+  if (location.search.includes('code=')) history.replaceState(null, '', location.pathname + (location.hash || ''));
+  try {
+    const p = sessionStorage.getItem('soneto_pending');
+    if (p) { sessionStorage.removeItem('soneto_pending'); if (session) pending = p; }
+  } catch (e) {}
+  if (session && me && me.display_name && pending) { history.replaceState(null, '', location.pathname + pending); pending = null; }
+  route();
+})();
 })();
 </script>
 </body>
