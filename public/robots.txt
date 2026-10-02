@@ -5,5 +5,8 @@ Disallow: /editar/
 Disallow: /moderar
 Disallow: /entrar
 Disallow: /bem-vindo
+Disallow: /perfil/
+Disallow: /esqueci-a-senha
+Disallow: /nova-senha
 
 Sitemap: https://soneto.me/sitemap.xml
