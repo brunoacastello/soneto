@@ -147,6 +147,24 @@ textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:
 .rowmenu{position:absolute;right:0;top:100%;z-index:30;min-width:15rem;padding:.3rem;border-radius:12px;background:var(--bg);border:1px solid color-mix(in srgb,var(--ink) 30%,transparent)}
 .rowmenu button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:.6rem .7rem;color:var(--ink);font-size:.95rem;cursor:pointer}
 .rowmenu button:hover{background:color-mix(in srgb,var(--ink) 10%,transparent)}
+.poem,.pp{touch-action:manipulation}
+.poem.endsec{min-height:60svh}
+.heartrow{text-align:center;margin-top:.9rem}
+.heart{display:inline-flex;align-items:center;gap:.35rem;background:none;border:0;padding:.45rem .6rem;color:inherit;opacity:.7;cursor:pointer;font-family:inherit}
+.heart svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.heart[aria-pressed="true"]{opacity:1}
+.heart[aria-pressed="true"] svg{fill:currentColor}
+.hc{font-size:.9rem;min-width:.6rem}
+.pop{position:fixed;z-index:80;pointer-events:none;width:96px;height:96px;margin:-48px 0 0 -48px;color:#e0526a;animation:popheart .75s ease-out forwards}
+.pop svg{width:100%;height:100%;fill:currentColor;stroke:none}
+@keyframes popheart{0%{transform:scale(.4);opacity:0}25%{transform:scale(1.15);opacity:1}100%{transform:translateY(-24px) scale(1);opacity:0}}
+.fl{display:block;max-width:28rem;margin:1.1rem auto .2rem;font-size:.8rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;opacity:.8}
+.ck{max-width:28rem;margin:-.9rem auto 1rem;min-height:1.3em;font-size:.9rem;font-weight:600}
+.chk{display:flex;align-items:center;gap:.7rem;max-width:28rem;margin:1.2rem auto;cursor:pointer;line-height:1.35}
+.chk input{width:1.3rem;height:1.3rem;flex:none;accent-color:var(--ink)}
+.warn{max-width:28rem;margin:.6rem auto;line-height:1.5}
+.danger{max-width:28rem;margin:3rem auto 0;padding-top:1.5rem;border-top:1px solid color-mix(in srgb,var(--ink) 25%,transparent)}
+.btn.red{background:#c62828;border-color:#c62828;color:#fff}
 .notice{max-width:28rem;margin:1.2rem auto 0;text-align:center;font-size:.9rem;opacity:.85}
 
 /* ---------- criar poema ---------- */
@@ -275,7 +293,8 @@ const ICON = {
   user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>',
   x:    '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   chev: '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>',
-  more: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>'
+  more: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>',
+  heart: '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
 };
 const SEAL_PATH = (() => {
   const amp = 0.09, R = 50 / (1 + amp), pts = [];
@@ -409,6 +428,62 @@ function shareHTML(p) {
     + `<button class="chip" data-act="copy-link" data-id="${id}">Copiar link</button>`
     + '</div>';
 }
+function heartHTML(p) {
+  const own = session && p.user_id && p.user_id === session.user.id ? ' data-own="1"' : '';
+  return `<div class="heartrow"><button class="heart" data-act="like" data-id="${esc(p.id)}"${own} aria-pressed="false" aria-label="Favoritar poema">${ICON.heart}<span class="hc"></span></button></div>`;
+}
+
+async function hydrateLikes(root) {
+  if (!session || !root) return;
+  const btns = [...root.querySelectorAll('.heart[data-id]')];
+  if (!btns.length) return;
+  const ids = [...new Set(btns.map(b => b.dataset.id))];
+  const ownIds = [...new Set(btns.filter(b => b.dataset.own === '1').map(b => b.dataset.id))];
+  try {
+    const [fav, cnt] = await Promise.all([
+      sb.from('favorites').select('poem_id').in('poem_id', ids),
+      ownIds.length ? sb.rpc('my_like_counts', { p_poem_ids: ownIds }) : Promise.resolve({ data: [] })
+    ]);
+    const liked = new Set((fav.data || []).map(r => r.poem_id));
+    const counts = new Map((cnt.data || []).map(r => [r.poem_id, Number(r.likes)]));
+    btns.forEach(b => {
+      b.setAttribute('aria-pressed', liked.has(b.dataset.id) ? 'true' : 'false');
+      if (b.dataset.own === '1') b.querySelector('.hc').textContent = String(counts.get(b.dataset.id) || 0);
+    });
+  } catch (e) { console.error(e); }
+}
+
+async function toggleLike(btn, onlyLike) {
+  if (!session || !me) { pending = curPath(); toast('Entre para favoritar poemas.'); go('/entrar'); return; }
+  const id = btn.dataset.id;
+  const liked = btn.getAttribute('aria-pressed') === 'true';
+  if (onlyLike && liked) return;
+  const hc = btn.querySelector('.hc');
+  const own = btn.dataset.own === '1';
+  const setState = on => {
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (own && hc) hc.textContent = String(Math.max(0, (Number(hc.textContent) || 0) + (on ? 1 : -1)));
+  };
+  setState(!liked);
+  const r = liked
+    ? await sb.from('favorites').delete().eq('poem_id', id).eq('user_id', me.id)
+    : await sb.from('favorites').insert({ user_id: me.id, poem_id: id });
+  if (r.error && r.error.code !== '23505') {
+    setState(liked);
+    fail('Não consegui favoritar agora. Tente de novo.', r.error);
+  }
+}
+
+function popHeart(x, y) {
+  const d = document.createElement('div');
+  d.className = 'pop';
+  d.style.left = x + 'px';
+  d.style.top = y + 'px';
+  d.innerHTML = ICON.heart;
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 800);
+}
+
 function articleHTML(p, o) {
   o = o || {};
   const f = formOf(p.form);
@@ -424,6 +499,7 @@ function articleHTML(p, o) {
     + (o.byline ? bylineHTML(p) : '')
     + `<div class="p-body">${esc(p.body)}</div>`
     + `<div class="p-meta">${linkIt && !p.title ? `<a href="${href}">${metaTxt}</a>` : metaTxt}</div>`
+    + heartHTML(p)
     + sentByHTML(p)
     + ((canEdit || canDel) ? '<div class="p-sent">'
         + (canEdit ? `<a class="inl" href="/editar/${enc(p.id)}">Editar</a>` : '')
@@ -446,32 +522,87 @@ function emptyFeed(msg) {
 }
 
 /* ================= telas ================= */
+const FEED_PAGE = 5;
+let feedState = null, feedObserver = null;
+
+async function fetchFeedPage(st) {
+  const { data: ids, error } = await sb.rpc('feed_page', { p_seed: st.seed, p_offset: st.offset, p_limit: FEED_PAGE, p_form: st.form });
+  if (error) throw error;
+  st.offset += ids.length;
+  if (ids.length < FEED_PAGE) st.done = true;
+  if (!ids.length) return [];
+  const rows = await fetchPoems(q => q.in('id', ids));
+  const pos = new Map(ids.map((x, i) => [x, i]));
+  rows.sort((a, b) => pos.get(a.id) - pos.get(b.id));
+  return rows.filter(p => { if (st.shown.has(p.id)) return false; st.shown.add(p.id); return true; });
+}
+function appendFeed(list) {
+  const box = $('feedList');
+  if (!box || !list.length) return;
+  box.insertAdjacentHTML('beforeend', list.map(p => sectionHTML(p)).join(''));
+  feedState.last = list[list.length - 1];
+  hydrateLikes(box);
+}
+function showFeedEnd() {
+  const end = $('feedEnd');
+  if (!end || !feedState) return;
+  const c = comboOf(feedState.last ? feedState.last.color : 'azul');
+  end.innerHTML = `<section class="poem endsec" style="--pbg:${c.bg};--pfg:${c.fg}"><article>`
+    + '<div class="p-meta" style="margin-top:0">Isso é tudo por enquanto</div>'
+    + '<div class="actions"><button class="chip" data-act="reshuffle">Ver em outra ordem</button></div>'
+    + footHTML() + '</article></section>';
+}
+function watchFeedEnd() {
+  if (feedObserver) feedObserver.disconnect();
+  const end = $('feedEnd');
+  if (!end) return;
+  const st = feedState;
+  feedObserver = new IntersectionObserver(async entries => {
+    if (!entries.some(e => e.isIntersecting) || st !== feedState || st.loading) return;
+    if (st.done) { showFeedEnd(); feedObserver.disconnect(); return; }
+    st.loading = true;
+    try {
+      const list = await fetchFeedPage(st);
+      if (st === feedState) appendFeed(list);
+    } catch (e) { console.error(e); }
+    st.loading = false;
+    if (st !== feedState) return;
+    if (st.done) { showFeedEnd(); feedObserver.disconnect(); }
+    else { feedObserver.unobserve(end); feedObserver.observe(end); }
+  }, { rootMargin: '700px 0px' });
+  feedObserver.observe(end);
+}
+
 async function viewFeed(id, form) {
   chrome('default', true); theme(COMBOS[0]); loading();
-  let list;
-  try {
-    list = await fetchPoems(q => { if (form) q = q.eq('form', form); return q.order('created_at', {ascending:false}).limit(60); });
-  } catch (e) { return showError(id, e); }
-  if (id !== navId) return;
-  if (!list.length) return emptyFeed(form ? 'Nenhum poema nessa forma ainda.' : 'Ainda não há poemas por aqui.<br>Que tal ser a primeira pessoa a publicar?');
-  list = shuffle(list);
-  theme(comboOf(list[0].color));
-  view.innerHTML = list.map((p, i) => sectionHTML(p, i === list.length - 1)).join('');
+  const st = feedState = { seed: Math.random().toString(36).slice(2, 10), form: form || null, offset: 0, done: false, loading: false, shown: new Set(), last: null };
+  let first;
+  try { first = await fetchFeedPage(st); } catch (e) { return showError(id, e); }
+  if (id !== navId || st !== feedState) return;
+  if (!first.length) return emptyFeed(form ? 'Nenhum poema nessa forma ainda.' : 'Ainda não há poemas por aqui.<br>Que tal ser a primeira pessoa a publicar?');
+  theme(comboOf(first[0].color));
+  view.innerHTML = '<div id="feedList"></div><div id="feedEnd"></div>';
+  appendFeed(first);
+  if (st.done) showFeedEnd(); else watchFeedEnd();
   updateBar();
 }
 
 async function viewRandom(id) {
   chrome('default', true); theme(COMBOS[0]);
-  let list;
-  try { list = await fetchPoems(q => q.order('created_at', {ascending:false}).limit(60)); }
-  catch (e) { return showError(id, e); }
+  let p = null;
+  try {
+    const seed = Math.random().toString(36).slice(2, 10);
+    const { data: ids, error } = await sb.rpc('feed_page', { p_seed: seed, p_offset: 0, p_limit: 2, p_form: null });
+    if (error) throw error;
+    const pick = ids.find(x => x !== lastRandomId) || ids[0];
+    if (pick) { const l = await fetchPoems(q => q.eq('id', pick).limit(1)); p = l[0] || null; }
+  } catch (e) { return showError(id, e); }
   if (id !== navId) return;
-  if (!list.length) return emptyFeed('Ainda não há poemas por aqui.');
-  const pool = list.length > 1 ? list.filter(p => p.id !== lastRandomId) : list;
-  const p = pool[Math.floor(Math.random() * pool.length)];
+  if (!p) return emptyFeed('Ainda não há poemas por aqui.');
   lastRandomId = p.id;
   theme(comboOf(p.color));
   view.innerHTML = sectionHTML(p, true) + '<button class="again" data-act="another">Outro poema</button>';
+  hydrateLikes(view);
   window.scrollTo(0, 0);
 }
 
@@ -538,6 +669,8 @@ async function runSearch(q) {
   $('res').innerHTML = html || '<p class="empty">Nada encontrado.</p>';
 }
 
+let profCache = { username: '', poemsHTML: '', favOffset: 0 };
+
 async function viewProfile(id, uname, quiet) {
   chrome('default', true);
   if (!quiet) { theme(COMBOS[0]); loading(); }
@@ -553,20 +686,52 @@ async function viewProfile(id, uname, quiet) {
   theme(comboOf(prof.theme));
   const mine = me && me.id === prof.id;
   const n = poems.length;
+  const showFavs = mine || prof.favorites_public !== false;
+  const poemsHTML = poems.map(p => `<div class="pp">${articleHTML(p, {tools:true})}</div>`).join('')
+    || `<p class="empty" style="margin-top:3rem">${mine ? 'Você ainda não publicou nenhum poema.<br>Toque no + para escrever o primeiro.' : 'Ainda sem poemas.'}</p>`;
+  profCache = { username: prof.username, poemsHTML, favOffset: 0 };
   view.innerHTML = `<div class="page"><header class="ph">
       <h1>${esc(prof.display_name)}${prof.badge === 'oficial' ? seal('oficial', true) : ''}</h1><div class="handle">@${esc(prof.username)}</div>
       ${prof.badge === 'oficial' ? '<div class="count">Autor oficial</div>' : ''}
       ${prof.bio ? `<p class="bio">${esc(prof.bio)}</p>` : ''}
       <div class="count">${n} ${n === 1 ? 'poema' : 'poemas'}</div>
-      ${mine ? `<p style="margin:1.4rem 0 0"><button class="chip" data-act="toggle-pal">Cores da página</button></p>
+      ${mine ? `<p style="margin:1.4rem 0 0"><a class="chip" href="/perfil/editar">Editar perfil</a> <button class="chip" data-act="toggle-pal">Cores da página</button></p>
         <div class="swatches" ${palOpen ? '' : 'hidden'}>${COMBOS.map(c =>
           `<button class="sw${c.id === prof.theme ? ' on' : ''}" data-act="pick-combo" data-id="${c.id}" style="background:${c.bg};color:${c.fg}" aria-label="${esc(c.name)}">Aa</button>`).join('')}</div>
         <p style="margin:1.4rem 0 0"><button class="linklike" data-act="logout">Sair da conta</button></p>` : ''}
+      ${showFavs ? '<div class="tabs" style="margin:1.6rem 0 0"><button class="chip on" data-act="prof-tab" data-tab="poemas">Poemas</button><button class="chip" data-act="prof-tab" data-tab="favoritos">Favoritos</button></div>' : ''}
     </header>
-    ${poems.map(p => `<div class="pp">${articleHTML(p, {tools:true})}</div>`).join('')
-      || `<p class="empty" style="margin-top:3rem">${mine ? 'Você ainda não publicou nenhum poema.<br>Toque no + para escrever o primeiro.' : 'Ainda sem poemas.'}</p>`}
+    <div id="profBody">${poemsHTML}</div>
     ${footHTML()}
   </div>`;
+  hydrateLikes($('profBody'));
+}
+
+async function loadProfileFavorites(offset, replace) {
+  const box = $('profBody');
+  if (!box) return;
+  const uname = profCache.username;
+  try {
+    const { data: ids, error } = await sb.rpc('user_favorite_ids', { p_username: uname, p_limit: 20, p_offset: offset });
+    if (error) throw error;
+    const rows = ids.length ? await fetchPoems(q => q.in('id', ids)) : [];
+    const pos = new Map(ids.map((x, i) => [x, i]));
+    rows.sort((a, b) => pos.get(a.id) - pos.get(b.id));
+    const html = rows.map(p => `<div class="pp">${articleHTML(p, {byline:true})}</div>`).join('');
+    const more = ids.length === 20 ? '<p class="morewrap" style="text-align:center;margin-top:2rem"><button class="chip" data-act="prof-more">Ver mais</button></p>' : '';
+    box.querySelectorAll('.morewrap').forEach(m => m.remove());
+    if (replace) {
+      const note = (me && me.username === uname && me.favorites_public === false) ? '<p class="empty" style="margin-top:2rem">Só você vê esta lista.</p>' : '';
+      box.innerHTML = note + (html || '<p class="empty" style="margin-top:3rem">Nenhum favorito ainda.</p>') + more;
+    } else {
+      box.insertAdjacentHTML('beforeend', html + more);
+    }
+    profCache.favOffset = offset + ids.length;
+    hydrateLikes(box);
+  } catch (e) {
+    console.error(e);
+    box.innerHTML = '<p class="empty">Não consegui carregar os favoritos.</p>';
+  }
 }
 
 async function viewAuthor(id, slug, quiet) {
@@ -595,6 +760,7 @@ async function viewAuthor(id, slug, quiet) {
       || '<p class="empty" style="margin-top:3rem">Ainda sem poemas. Contribua com o primeiro.</p>'}
     ${footHTML()}
   </div>`;
+  hydrateLikes(view);
 }
 
 /* ---------- entrar / criar conta ---------- */
@@ -648,6 +814,116 @@ async function doGoogle() {
 }
 
 /* ---------- bem-vindo: nome e @ ---------- */
+/* ---------- verificar se o @ esta disponivel ---------- */
+const unCheck = { timer: null, tok: 0 };
+async function checkUsername(v) {
+  v = (v || '').trim();
+  if (!/^[a-z0-9_]{3,30}$/.test(v)) return { ok: false, msg: 'Use de 3 a 30 letras minúsculas, números ou _.' };
+  if (v.startsWith('poeta_') || RESERVED.has(v)) return { ok: false, msg: 'Esse @ não está disponível.' };
+  if (me && v === me.username) return { ok: true, msg: 'Este é o seu @ atual.' };
+  const { data, error } = await sb.from('profiles').select('id').eq('username', v).maybeSingle();
+  if (error) { console.error(error); return { ok: false, msg: 'Não consegui verificar agora. Tente de novo.' }; }
+  return data ? { ok: false, msg: 'Esse @ já está em uso.' } : { ok: true, msg: 'Disponível.' };
+}
+function scheduleUserCheck(inp) {
+  clearTimeout(unCheck.timer);
+  const msg = $('unMsg');
+  if (!msg) return;
+  const v = inp.value.trim();
+  if (!v) { msg.textContent = ''; return; }
+  msg.textContent = 'Verificando...';
+  const tok = ++unCheck.tok;
+  unCheck.timer = setTimeout(async () => {
+    const r = await checkUsername(v);
+    if (tok !== unCheck.tok || !$('unMsg')) return;
+    $('unMsg').textContent = (r.ok ? '✓ ' : '✕ ') + r.msg;
+  }, 350);
+}
+
+/* ---------- editar perfil ---------- */
+const hasPassword = () => !!(session && session.user && session.user.app_metadata
+  && (session.user.app_metadata.providers || []).includes('email'));
+
+function viewSettings(id) {
+  chrome('default', false);
+  if (!me) return notFound('Não encontrei o seu perfil.');
+  theme(comboOf(me.theme));
+  const pw = hasPassword();
+  view.innerHTML = `<div class="page narrow"><h1 class="kicker">Editar perfil</h1>
+    <label class="fl" for="sn">Nome</label>
+    <input class="q" id="sn" maxlength="50" value="${esc(me.display_name || '')}" autocomplete="name">
+    <label class="fl" for="su">Nome de usuário</label>
+    <div class="atrow"><span>@</span><input class="q" id="su" maxlength="30" value="${esc(me.username)}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+    <div class="ck" id="unMsg"></div>
+    <label class="fl" for="sb">Frase sobre você</label>
+    <input class="q" id="sb" maxlength="200" value="${esc(me.bio || '')}" placeholder="Opcional">
+    <label class="chk"><input type="checkbox" id="sfav" ${me.favorites_public === false ? '' : 'checked'}><span>Mostrar meus favoritos para outras pessoas</span></label>
+    <div class="err" id="err"></div>
+    <button class="btn" id="saveBtn" data-act="save-profile">Salvar</button>
+    <a class="btn alt" href="/u/${enc(me.username)}">Voltar ao perfil</a>
+    <div class="danger">
+      <h2 class="fl" style="margin-top:0">Excluir conta</h2>
+      <p class="warn">Isso apaga sua conta, seus poemas e seus favoritos. Não dá para desfazer.</p>
+      <button class="btn red" id="delOpen" data-act="del-open">Excluir minha conta</button>
+      <div id="delBox" hidden>
+        <p class="warn">${pw ? 'Para confirmar, digite sua senha.' : 'Para confirmar, digite EXCLUIR.'}</p>
+        ${pw ? '<input class="q" id="delPw" type="password" placeholder="Sua senha" autocomplete="current-password">'
+             : '<input class="q" id="delWord" placeholder="EXCLUIR" autocomplete="off" autocapitalize="characters">'}
+        <div class="err" id="delErr"></div>
+        <button class="btn red" data-act="del-confirm">Excluir para sempre</button>
+        <button class="btn alt" data-act="del-cancel">Cancelar</button>
+      </div>
+    </div></div>`;
+}
+
+async function saveProfile() {
+  const dn = $('sn').value.trim(), un = $('su').value.trim(), bio = $('sb').value.trim(), fav = $('sfav').checked;
+  setErr('');
+  if (dn.length < 2) return setErr('Escreva seu nome (pelo menos 2 letras).');
+  const chk = await checkUsername(un);
+  if (!chk.ok) return setErr(chk.msg);
+  const btn = $('saveBtn');
+  btn.disabled = true;
+  const { data, error } = await sb.from('profiles')
+    .update({ display_name: dn, username: un, bio: bio || null, favorites_public: fav })
+    .eq('id', me.id).select('*').single();
+  if ($('saveBtn')) $('saveBtn').disabled = false;
+  if (error) {
+    if (error.code === '23505') setErr('Esse @ acabou de ser usado por outra pessoa. Escolha outro.');
+    else { console.error(error); setErr('Não consegui salvar. Tente de novo.'); }
+    return;
+  }
+  me = data;
+  toast('Perfil atualizado.');
+  go('/u/' + enc(me.username));
+}
+
+async function deleteAccount() {
+  const errEl = $('delErr');
+  errEl.textContent = '';
+  if (hasPassword()) {
+    const pw = $('delPw').value;
+    if (!pw) { errEl.textContent = 'Digite sua senha.'; return; }
+    const r = await sb.auth.signInWithPassword({ email: session.user.email, password: pw });
+    if (r.error) { errEl.textContent = 'Senha incorreta.'; return; }
+  } else if ($('delWord').value.trim().toUpperCase() !== 'EXCLUIR') {
+    errEl.textContent = 'Digite EXCLUIR para confirmar.';
+    return;
+  }
+  const { error } = await sb.rpc('delete_my_account');
+  if (error) {
+    console.error(error);
+    errEl.textContent = String(error.message || '').includes('unico administrador')
+      ? 'Você é o único administrador. Promova outra pessoa antes de excluir a conta.'
+      : 'Não consegui excluir agora. Tente de novo.';
+    return;
+  }
+  try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { console.error(e); }
+  session = null; me = null;
+  toast('Sua conta foi excluída.');
+  go('/');
+}
+
 function viewOnboard() {
   theme(COMBOS[0]); chrome('default', false);
   view.innerHTML = `<div class="page narrow"><h1 class="kicker">Bem-vindo ao Soneto</h1>
@@ -655,6 +931,7 @@ function viewOnboard() {
     <input class="q" id="dn" maxlength="50" placeholder="Seu nome" autocomplete="name" value="${esc(me && me.display_name || '')}">
     <div class="atrow"><span>@</span><input class="q" id="un" maxlength="30" placeholder="usuario" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
     <p class="hint">Seu @ é único: de 3 a 30 letras minúsculas, números ou _.</p>
+    <div class="ck" id="unMsg"></div>
     <input class="q" id="bio" maxlength="200" placeholder="Uma frase sobre você (opcional)">
     <div class="err" id="err"></div>
     <button class="btn" id="obBtn" data-act="onboard">Continuar</button></div>`;
@@ -666,6 +943,8 @@ async function doOnboard() {
   if (!/^[a-z0-9_]{3,30}$/.test(un)) return setErr('O @ deve ter de 3 a 30 caracteres: letras minúsculas, números ou _.');
   if (un.startsWith('poeta_') || RESERVED.has(un)) return setErr('Esse @ não está disponível. Escolha outro.');
   if (!me) return setErr('Não encontrei seu perfil. Saia e entre de novo.');
+  const chk = await checkUsername(un);
+  if (!chk.ok) return setErr(chk.msg);
   const btn = $('obBtn'); btn.disabled = true;
   try {
     const { data, error } = await sb.from('profiles')
@@ -699,6 +978,7 @@ async function viewPoem(id, pid) {
   theme(c); chrome('default', true);
   document.title = (p.title || 'Poema') + (p.author ? ' | ' + p.author.name : '') + ' | Soneto';
   view.innerHTML = `<section class="poem" style="--pbg:${c.bg};--pfg:${c.fg}">${articleHTML(p, {byline:true, link:false, tools:true, share:true, foot:true})}</section>`;
+  hydrateLikes(view);
 }
 
 /* ---------- compartilhar ---------- */
@@ -913,7 +1193,7 @@ async function modLogHTML() {
 function viewTerms() {
   theme(COMBOS[0]); chrome('default', true);
   const contact = CONTACT_EMAIL
-    ? `Para pedir a retirada de um texto, tirar dúvidas ou pedir a exclusão da sua conta, escreva para <a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a>.`
+    ? `Para pedir a retirada de um texto, ou tirar dúvidas, escreva para <a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a>.`
     : 'Para pedir a retirada de um texto, use o botão de denúncia no poema.';
   view.innerHTML = `<div class="page"><div class="doc">
     <h1>Termos de uso e privacidade</h1>
@@ -935,7 +1215,7 @@ function viewTerms() {
     <p>Spam, plágio, conteúdo ilegal, conteúdo que incite violência ou ódio e dados pessoais de outras pessoas. Poemas e contas que descumprirem estas regras podem ser removidos.</p>
 
     <h2>Privacidade</h2>
-    <p>Guardamos apenas o que você informa para ter uma conta: e-mail, nome, @, a frase de apresentação e os poemas que publicar. Seu nome, seu @, sua frase e seus poemas são públicos. Seu e-mail não aparece para outras pessoas. Não vendemos nem compartilhamos seus dados, e você pode pedir a exclusão da sua conta quando quiser.</p>
+    <p>Guardamos apenas o que você informa para ter uma conta: e-mail, nome, @, a frase de apresentação e os poemas que publicar. Seu nome, seu @, sua frase e seus poemas são públicos. Seu e-mail não aparece para outras pessoas. Seus favoritos ficam visíveis no seu perfil, a menos que você os esconda em Editar perfil. Não vendemos nem compartilhamos seus dados, e você pode excluir a sua conta quando quiser, também em Editar perfil.</p>
 
     <h2>Contato</h2>
     <p>${contact}</p>
@@ -1087,6 +1367,8 @@ function menuColors() {
 /* ================= rotas ================= */
 async function route() {
   const id = ++navId;
+  if (feedObserver) feedObserver.disconnect();
+  feedState = null;
   document.title = 'Soneto';
   document.body.classList.remove('menu-open');
   closeReport();
@@ -1094,7 +1376,7 @@ async function route() {
   const a = parts[0], b = parts[1];
   window.scrollTo(0, 0);
 
-  if ((a === 'novo' || a === 'editar' || a === 'moderar' || a === 'bem-vindo') && !session) { pending = curPath(); go('/entrar'); return; }
+  if ((a === 'novo' || a === 'editar' || a === 'moderar' || a === 'perfil' || a === 'bem-vindo') && !session) { pending = curPath(); go('/entrar'); return; }
   if (session && me && !me.display_name && a !== 'bem-vindo') { go('/bem-vindo'); return; }
   if (session && a === 'entrar') { go('/'); return; }
 
@@ -1110,6 +1392,7 @@ async function route() {
     case 'editar':     return viewCreate(id, '', b);
     case 'p':          return viewPoem(id, b);
     case 'termos':     return viewTerms();
+    case 'perfil':     return viewSettings(id);
     case 'moderar':    return viewMod(id);
     case 'entrar':     return viewAuth();
     case 'bem-vindo':  return viewOnboard();
@@ -1189,6 +1472,22 @@ document.addEventListener('click', async e => {
       else route();
       break;
     }
+    case 'like': await toggleLike(el); break;
+    case 'reshuffle': window.scrollTo(0, 0); viewFeed(navId, feedState ? feedState.form : null); break;
+    case 'prof-tab': {
+      const box = $('profBody');
+      if (!box) break;
+      document.querySelectorAll('[data-act="prof-tab"]').forEach(b => b.classList.toggle('on', b.dataset.tab === el.dataset.tab));
+      if (el.dataset.tab === 'poemas') { box.innerHTML = profCache.poemsHTML; hydrateLikes(box); break; }
+      box.innerHTML = '<p class="loading" style="padding-top:3rem">· · ·</p>';
+      await loadProfileFavorites(0, true);
+      break;
+    }
+    case 'prof-more': await loadProfileFavorites(profCache.favOffset, false); break;
+    case 'save-profile': await saveProfile(); break;
+    case 'del-open': $('delBox').hidden = false; $('delOpen').hidden = true; break;
+    case 'del-cancel': $('delBox').hidden = true; $('delOpen').hidden = false; $('delErr').textContent = ''; break;
+    case 'del-confirm': await deleteAccount(); break;
     case 'mod-menu': {
       const m = $('rm-' + id);
       const open = m && m.hidden;
@@ -1235,7 +1534,7 @@ document.addEventListener('input', e => {
   else if (t.id === 'mq') { clearTimeout(modTimer); const v = t.value; modTimer = setTimeout(async () => { try { const h = await modAccountsList(v); if ($('accList')) $('accList').innerHTML = h; } catch (err) { console.error(err); } }, 250); }
   else if (t.id === 'tIn') draft.title = t.value;
   else if (t.id === 'bIn') { draft.body = t.value; grow(t); updateMeta(); }
-  else if (t.id === 'un') { const v = t.value.toLowerCase().replace(/[^a-z0-9_]/g, ''); if (v !== t.value) t.value = v; }
+  else if (t.id === 'un' || t.id === 'su') { const v = t.value.toLowerCase().replace(/[^a-z0-9_]/g, ''); if (v !== t.value) t.value = v; scheduleUserCheck(t); }
 });
 document.addEventListener('change', e => {
   if (e.target.id === 'agree') { draft.agree = e.target.checked; updateMeta(); }
@@ -1247,6 +1546,8 @@ document.addEventListener('keydown', e => {
     closeReport();
   } else if (e.key === 'Enter' && (e.target.id === 'em' || e.target.id === 'pw')) { e.preventDefault(); doAuth(); }
   else if (e.key === 'Enter' && (e.target.id === 'dn' || e.target.id === 'un' || e.target.id === 'bio')) { e.preventDefault(); doOnboard(); }
+  else if (e.key === 'Enter' && (e.target.id === 'sn' || e.target.id === 'su' || e.target.id === 'sb')) { e.preventDefault(); saveProfile(); }
+  else if (e.key === 'Enter' && (e.target.id === 'delPw' || e.target.id === 'delWord')) { e.preventDefault(); deleteAccount(); }
 });
 
 sb.auth.onAuthStateChange((_evt, s) => { session = s; if (!s) me = null; });
@@ -1257,6 +1558,24 @@ function go(path, replace) {
   route();
 }
 window.addEventListener('popstate', route);
+let lastTap = { t: 0, x: 0, y: 0 };
+document.addEventListener('pointerup', e => {
+  if (e.pointerType !== 'touch') return;
+  const art = e.target.closest('.poem article, .pp article');
+  if (!art || e.target.closest('a, button, input, textarea, label')) return;
+  const now = Date.now();
+  if (now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 40) {
+    lastTap.t = 0;
+    const btn = art.querySelector('.heart');
+    if (btn) {
+      if (session && me) popHeart(e.clientX, e.clientY);
+      toggleLike(btn, true);
+    }
+  } else {
+    lastTap = { t: now, x: e.clientX, y: e.clientY };
+  }
+});
+
 document.addEventListener('click', e => {
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
   const a = e.target.closest('a[href]');
