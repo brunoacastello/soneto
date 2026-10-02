@@ -165,6 +165,10 @@ textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:
 .warn{max-width:28rem;margin:.6rem auto;line-height:1.5}
 .danger{max-width:28rem;margin:3rem auto 0;padding-top:1.5rem;border-top:1px solid color-mix(in srgb,var(--ink) 25%,transparent)}
 .btn.red{background:#c62828;border-color:#c62828;color:#fff}
+.ptabs{display:flex;gap:1.6rem;justify-content:center;margin-top:1.8rem}
+.ptab{background:none;border:0;border-bottom:2px solid transparent;color:inherit;font:inherit;font-size:1.05rem;padding:.3rem .1rem;opacity:.6;cursor:pointer}
+.ptab.on{opacity:1;font-weight:600;border-bottom-color:currentColor}
+.ptab:focus-visible{outline:2px solid currentColor;outline-offset:3px}
 .notice{max-width:28rem;margin:1.2rem auto 0;text-align:center;font-size:.9rem;opacity:.85}
 
 /* ---------- criar poema ---------- */
@@ -218,7 +222,7 @@ textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:
     <a href="/aleatorio" data-act="menu-close">Aleatório</a>
     <a href="/procurar" data-act="menu-close">Procurar</a>
     <a id="menuMod" href="/moderar" data-act="menu-close" hidden>Moderação</a>
-    <a class="small" href="/termos" data-act="menu-close">Termos de uso</a>
+    <a class="small" href="/sobre" data-act="menu-close">Sobre</a>
   </nav>
 </div>
 <div id="toast" role="status"></div>
@@ -550,7 +554,7 @@ function showFeedEnd() {
   end.innerHTML = `<section class="poem endsec" style="--pbg:${c.bg};--pfg:${c.fg}"><article>`
     + '<div class="p-meta" style="margin-top:0">Isso é tudo por enquanto</div>'
     + '<div class="actions"><button class="chip" data-act="reshuffle">Ver em outra ordem</button></div>'
-    + footHTML() + '</article></section>';
+    + '</article></section>';
 }
 function watchFeedEnd() {
   if (feedObserver) feedObserver.disconnect();
@@ -601,7 +605,7 @@ async function viewRandom(id) {
   if (!p) return emptyFeed('Ainda não há poemas por aqui.');
   lastRandomId = p.id;
   theme(comboOf(p.color));
-  view.innerHTML = sectionHTML(p, true) + '<button class="again" data-act="another">Outro poema</button>';
+  view.innerHTML = sectionHTML(p) + '<button class="again" data-act="another">Outro poema</button>';
   hydrateLikes(view);
   window.scrollTo(0, 0);
 }
@@ -699,7 +703,7 @@ async function viewProfile(id, uname, quiet) {
         <div class="swatches" ${palOpen ? '' : 'hidden'}>${COMBOS.map(c =>
           `<button class="sw${c.id === prof.theme ? ' on' : ''}" data-act="pick-combo" data-id="${c.id}" style="background:${c.bg};color:${c.fg}" aria-label="${esc(c.name)}">Aa</button>`).join('')}</div>
         <p style="margin:1.4rem 0 0"><button class="linklike" data-act="logout">Sair da conta</button></p>` : ''}
-      ${showFavs ? '<div class="tabs" style="margin:1.6rem 0 0"><button class="chip on" data-act="prof-tab" data-tab="poemas">Poemas</button><button class="chip" data-act="prof-tab" data-tab="favoritos">Favoritos</button></div>' : ''}
+      ${showFavs ? '<div class="ptabs"><button class="ptab on" data-act="prof-tab" data-tab="poemas">Poemas</button><button class="ptab" data-act="prof-tab" data-tab="favoritos">Favoritos</button></div>' : ''}
     </header>
     <div id="profBody">${poemsHTML}</div>
     ${footHTML()}
@@ -758,7 +762,6 @@ async function viewAuthor(id, slug, quiet) {
     </header>
     ${poems.map(p => `<div class="pp">${articleHTML(p, {tools:true})}</div>`).join('')
       || '<p class="empty" style="margin-top:3rem">Ainda sem poemas. Contribua com o primeiro.</p>'}
-    ${footHTML()}
   </div>`;
   hydrateLikes(view);
 }
@@ -977,7 +980,7 @@ async function viewPoem(id, pid) {
   const c = comboOf(p.color);
   theme(c); chrome('default', true);
   document.title = (p.title || 'Poema') + (p.author ? ' | ' + p.author.name : '') + ' | Soneto';
-  view.innerHTML = `<section class="poem" style="--pbg:${c.bg};--pfg:${c.fg}">${articleHTML(p, {byline:true, link:false, tools:true, share:true, foot:true})}</section>`;
+  view.innerHTML = `<section class="poem" style="--pbg:${c.bg};--pfg:${c.fg}">${articleHTML(p, {byline:true, link:false, tools:true, share:true})}</section>`;
   hydrateLikes(view);
 }
 
@@ -1189,6 +1192,37 @@ async function modLogHTML() {
   }).join('') || '<p class="empty">Nenhuma ação registrada ainda.</p>';
 }
 
+/* ---------- sobre ---------- */
+function viewAbout() {
+  theme(COMBOS[0]); chrome('default', true);
+  document.title = 'Sobre | Soneto';
+  const contact = CONTACT_EMAIL
+    ? `Sugestões, dúvidas ou pedidos de retirada de um texto: <a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a>.`
+    : 'Para pedir a retirada de um texto, use o botão de denúncia no poema.';
+  view.innerHTML = `<div class="page"><div class="doc">
+    <h1>Sobre o Soneto</h1>
+
+    <p>O Soneto é um lugar para ler e escrever poemas. Ele nasceu de um projeto da faculdade de Letras que ficou no papel, e agora saiu dele.</p>
+
+    <h2>O que você encontra aqui</h2>
+    <p>Poemas de autores em domínio público, reunidos em páginas próprias, e poemas escritos por quem usa o site.</p>
+
+    <h2>Como funciona</h2>
+    <p><strong>Ler.</strong> Role a página inicial para ver um poema depois do outro. Toque no título para abrir o poema e compartilhá-lo.</p>
+    <p><strong>Escrever.</strong> Toque no + para criar um poema. A forma (haicai, quadra, soneto e outras) muda sozinha conforme você adiciona versos, e você pode escolher outra se preferir.</p>
+    <p><strong>Favoritar.</strong> Toque no coração de um poema para guardá-lo na sua lista. Só quem escreveu vê quantas pessoas favoritaram, e ninguém vê quem foi.</p>
+    <p><strong>Contribuir.</strong> Nas páginas de autores em domínio público, qualquer pessoa pode enviar um poema, confirmando que ele pertence ao autor.</p>
+
+    <h2>Os selos</h2>
+    <p>${seal('dominio_publico')} <strong>Dourado:</strong> autor em domínio público.</p>
+    <p>${seal('oficial')} <strong>Roxo:</strong> autor oficial, verificado pelo Soneto.</p>
+    <p>Poemas que aparecem como "Enviado por Soneto" foram colocados pelo próprio site.</p>
+
+    <h2>Contato</h2>
+    <p>${contact}</p>
+  </div></div>`;
+}
+
 /* ---------- termos de uso e privacidade ---------- */
 function viewTerms() {
   theme(COMBOS[0]); chrome('default', true);
@@ -1203,7 +1237,7 @@ function viewTerms() {
     <p>O Soneto é um espaço para ler e publicar poemas. Aqui você encontra textos de autores em domínio público e poemas escritos por quem usa o site. Ao usar o Soneto, você concorda com estas regras.</p>
 
     <h2>Seus poemas</h2>
-    <p>Os poemas que você publica continuam sendo seus. Ao publicar, você autoriza o Soneto a mostrá-los no site e em links de compartilhamento. Você pode editar ou apagar quando quiser. Publique apenas textos que você escreveu ou que estejam em domínio público.</p>
+    <p>Os poemas que você publica continuam sendo seus. Ao publicar, você autoriza o Soneto a mostrá-los no site e em links de compartilhamento. Você pode editar ou apagar quando quiser. Cada conta pode publicar até 10 poemas por dia, para evitar spam. Publique apenas textos que você escreveu ou que estejam em domínio público.</p>
 
     <h2>Autores de domínio público</h2>
     <p>As páginas com selo dourado reúnem obras de autores em domínio público. Qualquer pessoa pode contribuir com um poema, desde que marque a confirmação de que ele pertence ao autor e está em domínio público. Os poemas enviados pelo próprio Soneto aparecem como "Enviado por Soneto". Textos antigos podem ter pequenas diferenças de grafia entre edições.</p>
@@ -1313,7 +1347,12 @@ async function publish() {
   else { row.user_id = me.id; row.author_id = null; }
   const pb = $('pubBtn'); if (pb) pb.disabled = true;
   const { error } = await sb.from('poems').insert(row);
-  if (error) { fail('Não consegui publicar. Tente de novo.', error); updateMeta(); return; }
+  if (error) {
+    const limit = String(error.message || '').includes('limite diario');
+    fail(limit ? 'Você chegou ao limite de 10 poemas por dia. Volte amanhã.' : 'Não consegui publicar. Tente de novo.', error);
+    updateMeta();
+    return;
+  }
   const dest = createAuthor ? '/a/' + enc(createAuthor.slug) : '/u/' + enc(me.username);
   draft = newDraft();
   toast('Poema publicado.');
@@ -1392,6 +1431,7 @@ async function route() {
     case 'editar':     return viewCreate(id, '', b);
     case 'p':          return viewPoem(id, b);
     case 'termos':     return viewTerms();
+    case 'sobre':      return viewAbout();
     case 'perfil':     return viewSettings(id);
     case 'moderar':    return viewMod(id);
     case 'entrar':     return viewAuth();
