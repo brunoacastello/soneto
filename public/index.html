@@ -270,13 +270,23 @@ const ICON = {
   x:    '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   chev: '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>'
 };
+const SEAL_PATH = (() => {
+  const amp = 0.09, R = 50 / (1 + amp), pts = [];
+  for (let i = 0; i <= 240; i++) {
+    const t = 2 * Math.PI * i / 240, r = R * (1 + amp * Math.cos(8 * t));
+    pts.push((i ? 'L' : 'M') + (r * Math.cos(t)).toFixed(2) + ' ' + (r * Math.sin(t)).toFixed(2));
+  }
+  return pts.join('') + 'Z';
+})();
+const SEAL_BOOK = (c) => '<path d="M0 -16 C-8 -21 -20 -21 -26 -17 V17 C-20 13 -8 13 0 18 C8 13 20 13 26 17 V-17 C20 -21 8 -21 0 -16 Z" fill="#fff"/>'
+  + '<path d="M0 -14 V17" stroke="' + c + '" stroke-width="3"/>';
+const SEAL_CHECK = '<path d="M-21 2 L-7 16 L21 -15" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>';
 function seal(kind, big) {
-  const gold = kind !== 'oficial';
-  const fill = gold ? '#d4a017' : '#2f5fd0', stroke = gold ? '#8a6508' : '#1c3a8a';
-  const label = gold ? 'Autor de domínio público' : 'Autor oficial';
-  return `<svg class="seal${big ? ' big' : ''}" viewBox="0 0 24 24" role="img" aria-label="${label}"><title>${label}</title>`
-    + `<circle cx="12" cy="12" r="10" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`
-    + `<path d="M12 6.5l1.7 3.5 3.8.5-2.8 2.6.7 3.8-3.4-1.9-3.4 1.9.7-3.8-2.8-2.6 3.8-.5z" fill="#fff8dc"/></svg>`;
+  const official = kind === 'oficial';
+  const color = official ? '#3897F0' : '#D4A017';
+  const label = official ? 'Autor oficial' : 'Autor de domínio público';
+  return `<svg class="seal${big ? ' big' : ''}" viewBox="-52 -52 104 104" role="img" aria-label="${label}"><title>${label}</title>`
+    + `<path d="${SEAL_PATH}" fill="${color}"/>` + (official ? SEAL_CHECK : SEAL_BOOK(color)) + '</svg>';
 }
 
 /* ================= estado ================= */
