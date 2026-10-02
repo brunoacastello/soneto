@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /novo
+Disallow: /editar/
+Disallow: /moderar
+Disallow: /entrar
+Disallow: /bem-vindo
+
+Sitemap: https://soneto.me/sitemap.xml
