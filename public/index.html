@@ -868,9 +868,22 @@ async function sendReset() {
 }
 
 /* ---------- nova senha (abre pelo link do e-mail) ---------- */
-function viewNewPassword() {
+async function viewNewPassword(id) {
   theme(COMBOS[0]); chrome('default', false);
-  if (!session) {
+  // link novo do e-mail: confirma o codigo aqui, no navegador de quem abriu o link
+  // (funciona mesmo se o pedido foi feito em outro aparelho, e robos de e-mail nao gastam o link)
+  let bad = false;
+  const q = new URLSearchParams(location.search);
+  const th = q.get('token_hash');
+  if (th && q.get('type') === 'recovery') {
+    history.replaceState(null, '', '/nova-senha');
+    loading();
+    const { data, error } = await sb.auth.verifyOtp({ token_hash: th, type: 'recovery' });
+    if (id !== navId) return;
+    if (error) { console.error(error); bad = true; }
+    else { session = data.session; await loadMe(); }
+  }
+  if (bad || !session) {
     view.innerHTML = `<div class="page narrow"><h1 class="kicker">Link inválido</h1>
       <p class="lead">Este link expirou ou já foi usado. Peça um novo.</p>
       <a class="btn" href="/esqueci-a-senha">Pedir novo link</a></div>`;
@@ -1523,7 +1536,7 @@ async function route() {
     case 'termos':     return viewTerms();
     case 'sobre':      return viewAbout();
     case 'esqueci-a-senha': return viewForgot();
-    case 'nova-senha': return viewNewPassword();
+    case 'nova-senha': return viewNewPassword(id);
     case 'perfil':     return viewSettings(id);
     case 'moderar':    return viewMod(id);
     case 'entrar':     return viewAuth();
