@@ -872,7 +872,7 @@ async function viewNewPassword(id) {
   theme(COMBOS[0]); chrome('default', false);
   // link novo do e-mail: confirma o codigo aqui, no navegador de quem abriu o link
   // (funciona mesmo se o pedido foi feito em outro aparelho, e robos de e-mail nao gastam o link)
-  let bad = false;
+  let bad = false, why = '';
   const q = new URLSearchParams(location.search);
   const th = q.get('token_hash');
   if (th && q.get('type') === 'recovery') {
@@ -880,13 +880,14 @@ async function viewNewPassword(id) {
     loading();
     const { data, error } = await sb.auth.verifyOtp({ token_hash: th, type: 'recovery' });
     if (id !== navId) return;
-    if (error) { console.error(error); bad = true; }
+    if (error) { console.error(error); bad = true; why = [error.code, error.status].filter(Boolean).join(' / ') || String(error.message || 'erro'); }
     else { session = data.session; await loadMe(); }
   }
   if (bad || !session) {
     view.innerHTML = `<div class="page narrow"><h1 class="kicker">Link inválido</h1>
       <p class="lead">Este link expirou ou já foi usado. Peça um novo.</p>
-      <a class="btn" href="/esqueci-a-senha">Pedir novo link</a></div>`;
+      <a class="btn" href="/esqueci-a-senha">Pedir novo link</a>
+      ${why ? `<p class="hint" style="margin:1.4rem auto 0;text-align:center">Motivo técnico: ${esc(why)}</p>` : ''}</div>`;
     return;
   }
   view.innerHTML = `<div class="page narrow"><h1 class="kicker">Nova senha</h1>
