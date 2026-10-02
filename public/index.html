@@ -774,6 +774,7 @@ function viewAuth() {
     ${GOOGLE_ENABLED ? '<button class="btn alt" data-act="google">Continuar com Google</button><p class="or">ou</p>' : ''}
     <input class="q" id="em" type="email" placeholder="E-mail" autocomplete="email" autocapitalize="off" spellcheck="false">
     <input class="q" id="pw" type="password" placeholder="Senha" autocomplete="${login ? 'current-password' : 'new-password'}">
+    ${login ? '<p class="switch" style="margin:-.5rem 0 1rem"><a class="inl" href="/esqueci-a-senha">Esqueci a senha</a></p>' : ''}
     <div class="err" id="err"></div>
     <button class="btn" id="goBtn" data-act="auth-submit">${login ? 'Entrar' : 'Criar conta'}</button>
     <p class="switch">${login ? 'Ainda não tem conta?' : 'Já tem conta?'} <button class="linklike" data-act="auth-switch">${login ? 'Criar conta' : 'Entrar'}</button></p>
@@ -814,6 +815,77 @@ async function doGoogle() {
   try { sessionStorage.setItem('soneto_pending', pending || ''); } catch (e) {}
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/' } });
   if (error) setErr('Não consegui abrir o login com Google.');
+}
+
+/* ---------- esqueci a senha ---------- */
+function viewForgot() {
+  theme(COMBOS[0]); chrome('default', false);
+  view.innerHTML = `<div class="page narrow"><h1 class="kicker">Esqueci a senha</h1>
+    <p class="lead">Digite o e-mail da sua conta e enviaremos um link para criar uma nova senha.</p>
+    <input class="q" id="fe" type="email" placeholder="E-mail" autocomplete="email" autocapitalize="off" spellcheck="false">
+    <div class="err" id="err"></div>
+    <button class="btn" id="fBtn" data-act="forgot-send">Enviar link</button>
+    <p class="switch"><a class="inl" href="/entrar">Voltar para entrar</a></p></div>`;
+}
+
+async function sendReset() {
+  const email = $('fe').value.trim();
+  setErr('');
+  if (!email) return setErr('Digite o seu e-mail.');
+  $('fBtn').disabled = true;
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/nova-senha' });
+    if (error) {
+      const m = String(error.message || '').toLowerCase();
+      if (m.includes('rate limit') || error.status === 429) return setErr('Espere um minuto antes de pedir outro link.');
+      if (m.includes('invalid') && m.includes('email')) return setErr('Esse e-mail não parece válido.');
+      if (error.status >= 500) { console.error(error); return setErr('Não consegui enviar agora. Tente de novo mais tarde.'); }
+    }
+    // a resposta e sempre a mesma, exista a conta ou nao
+    $('fBtn').hidden = true;
+    $('fe').hidden = true;
+    $('err').textContent = 'Se esse e-mail tiver uma conta, enviamos um link. Olhe também a caixa de spam.';
+  } catch (e) {
+    console.error(e);
+    setErr('Algo deu errado. Tente de novo.');
+  } finally {
+    if ($('fBtn')) $('fBtn').disabled = false;
+  }
+}
+
+/* ---------- nova senha (abre pelo link do e-mail) ---------- */
+function viewNewPassword() {
+  theme(COMBOS[0]); chrome('default', false);
+  if (!session) {
+    view.innerHTML = `<div class="page narrow"><h1 class="kicker">Link inválido</h1>
+      <p class="lead">Este link expirou ou já foi usado. Peça um novo.</p>
+      <a class="btn" href="/esqueci-a-senha">Pedir novo link</a></div>`;
+    return;
+  }
+  view.innerHTML = `<div class="page narrow"><h1 class="kicker">Nova senha</h1>
+    <input class="q" id="np1" type="password" placeholder="Nova senha" autocomplete="new-password">
+    <input class="q" id="np2" type="password" placeholder="Repita a nova senha" autocomplete="new-password">
+    <div class="err" id="err"></div>
+    <button class="btn" id="npBtn" data-act="newpw-save">Salvar nova senha</button></div>`;
+}
+
+async function saveNewPassword() {
+  const a = $('np1').value, b = $('np2').value;
+  setErr('');
+  if (a.length < 6) return setErr('A senha precisa ter pelo menos 6 caracteres.');
+  if (a !== b) return setErr('As duas senhas não são iguais.');
+  $('npBtn').disabled = true;
+  const { error } = await sb.auth.updateUser({ password: a });
+  if ($('npBtn')) $('npBtn').disabled = false;
+  if (error) {
+    console.error(error);
+    const m = String(error.message || '').toLowerCase();
+    return setErr(m.includes('different') || m.includes('same')
+      ? 'Escolha uma senha diferente da anterior.'
+      : 'Não consegui salvar. Peça um novo link e tente de novo.');
+  }
+  toast('Senha atualizada.');
+  go('/');
 }
 
 /* ---------- bem-vindo: nome e @ ---------- */
@@ -1432,6 +1504,8 @@ async function route() {
     case 'p':          return viewPoem(id, b);
     case 'termos':     return viewTerms();
     case 'sobre':      return viewAbout();
+    case 'esqueci-a-senha': return viewForgot();
+    case 'nova-senha': return viewNewPassword();
     case 'perfil':     return viewSettings(id);
     case 'moderar':    return viewMod(id);
     case 'entrar':     return viewAuth();
@@ -1528,6 +1602,8 @@ document.addEventListener('click', async e => {
     case 'del-open': $('delBox').hidden = false; $('delOpen').hidden = true; break;
     case 'del-cancel': $('delBox').hidden = true; $('delOpen').hidden = false; $('delErr').textContent = ''; break;
     case 'del-confirm': await deleteAccount(); break;
+    case 'forgot-send': await sendReset(); break;
+    case 'newpw-save': await saveNewPassword(); break;
     case 'mod-menu': {
       const m = $('rm-' + id);
       const open = m && m.hidden;
@@ -1588,6 +1664,8 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Enter' && (e.target.id === 'dn' || e.target.id === 'un' || e.target.id === 'bio')) { e.preventDefault(); doOnboard(); }
   else if (e.key === 'Enter' && (e.target.id === 'sn' || e.target.id === 'su' || e.target.id === 'sb')) { e.preventDefault(); saveProfile(); }
   else if (e.key === 'Enter' && (e.target.id === 'delPw' || e.target.id === 'delWord')) { e.preventDefault(); deleteAccount(); }
+  else if (e.key === 'Enter' && e.target.id === 'fe') { e.preventDefault(); sendReset(); }
+  else if (e.key === 'Enter' && (e.target.id === 'np1' || e.target.id === 'np2')) { e.preventDefault(); saveNewPassword(); }
 });
 
 sb.auth.onAuthStateChange((_evt, s) => { session = s; if (!s) me = null; });
