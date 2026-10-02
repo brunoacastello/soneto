@@ -14,7 +14,13 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%92%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
+<link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png">
+<link rel="shortcut icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#cfe3fa">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;600&display=swap" rel="stylesheet">
@@ -1169,9 +1175,27 @@ async function storyBlob(p) {
     if (l === null) { y += layout.s * 0.9; continue; }
     g.fillText(l, x0, y); y += layout.s * 1.5;
   }
+  // ponta de caneta (logo) acima do endereco
+  {
+    const k = 0.8, nx = W / 2;
+    g.save();
+    g.fillStyle = col.fg;
+    g.beginPath();
+    [[42, 6], [58, 6], [58, 22], [72, 40], [50, 94], [28, 40], [42, 22]].forEach(([x, y], i) => {
+      const [px, py] = [nx + (x - 50) * k, H - 250 + (y - 6) * k];
+      if (i) g.lineTo(px, py); else g.moveTo(px, py);
+    });
+    g.closePath(); g.fill();
+    g.strokeStyle = col.bg; g.lineWidth = 3 * k; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(nx, H - 250 + 50 * k); g.lineTo(nx, H - 250 + 82 * k); g.stroke();
+    g.fillStyle = col.bg;
+    g.beginPath(); g.arc(nx, H - 250 + 40 * k, 6 * k, 0, Math.PI * 2); g.fill();
+    g.restore();
+  }
   g.textAlign = 'center'; g.font = `400 44px ${fam}`;
   try { g.letterSpacing = '10px'; } catch (e) {}
-  g.fillText('soneto.me', W / 2, H - 170);
+  g.fillStyle = col.fg;
+  g.fillText('soneto.me', W / 2, H - 135);
   return new Promise(res => cv.toBlob(res, 'image/png'));
 }
 async function doShareImage(p) {
