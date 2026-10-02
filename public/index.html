@@ -169,6 +169,11 @@ textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:
 .ptab{background:none;border:0;border-bottom:2px solid transparent;color:inherit;font:inherit;font-size:1.05rem;padding:.3rem .1rem;opacity:.6;cursor:pointer}
 .ptab.on{opacity:1;font-weight:600;border-bottom-color:currentColor}
 .ptab:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.pwwrap{position:relative;max-width:28rem;margin:0 auto 1.4rem}
+.pwwrap .q{margin:0;padding-right:2.8rem}
+.eye{position:absolute;right:0;top:50%;transform:translateY(-50%);background:none;border:0;color:inherit;opacity:.75;padding:.45rem;cursor:pointer;line-height:0}
+.eye svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.eye:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:6px}
 .notice{max-width:28rem;margin:1.2rem auto 0;text-align:center;font-size:.9rem;opacity:.85}
 
 /* ---------- criar poema ---------- */
@@ -298,6 +303,8 @@ const ICON = {
   x:    '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   chev: '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>',
   more: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>',
+  eye: '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  eyeOff: '<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
   heart: '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
 };
 const SEAL_PATH = (() => {
@@ -311,6 +318,10 @@ const SEAL_PATH = (() => {
 const SEAL_BOOK = (c) => '<path d="M0 -16 C-8 -21 -20 -21 -26 -17 V17 C-20 13 -8 13 0 18 C8 13 20 13 26 17 V-17 C20 -21 8 -21 0 -16 Z" fill="#fff"/>'
   + '<path d="M0 -14 V17" stroke="' + c + '" stroke-width="3"/>';
 const SEAL_CHECK = '<path d="M-21 2 L-7 16 L21 -15" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>';
+function pwField(id, placeholder, autocomplete) {
+  return `<div class="pwwrap"><input class="q" id="${id}" type="password" placeholder="${placeholder}" autocomplete="${autocomplete}">`
+    + `<button type="button" class="eye" data-act="toggle-pw" data-target="${id}" aria-pressed="false" aria-label="Mostrar senha">${ICON.eye}</button></div>`;
+}
 function seal(kind, big) {
   const official = kind === 'oficial';
   const color = official ? '#7F5AF0' : '#D4A017';
@@ -773,7 +784,8 @@ function viewAuth() {
   view.innerHTML = `<div class="page narrow"><h1 class="kicker">${login ? 'Entrar' : 'Criar conta'}</h1>
     ${GOOGLE_ENABLED ? '<button class="btn alt" data-act="google">Continuar com Google</button><p class="or">ou</p>' : ''}
     <input class="q" id="em" type="email" placeholder="E-mail" autocomplete="email" autocapitalize="off" spellcheck="false">
-    <input class="q" id="pw" type="password" placeholder="Senha" autocomplete="${login ? 'current-password' : 'new-password'}">
+    ${pwField('pw', 'Senha', login ? 'current-password' : 'new-password')}
+    ${login ? '' : pwField('pw2', 'Repita a senha', 'new-password') + '<p class="hint">Use pelo menos 8 caracteres, com letras e números.</p>'}
     ${login ? '<p class="switch" style="margin:-.5rem 0 1rem"><a class="inl" href="/esqueci-a-senha">Esqueci a senha</a></p>' : ''}
     <div class="err" id="err"></div>
     <button class="btn" id="goBtn" data-act="auth-submit">${login ? 'Entrar' : 'Criar conta'}</button>
@@ -784,7 +796,7 @@ function trErr(e) {
   const m = String(e && e.message || '').toLowerCase();
   if (m.includes('invalid login')) return 'E-mail ou senha incorretos.';
   if (m.includes('already registered') || m.includes('already been registered')) return 'Esse e-mail já tem conta. Tente entrar.';
-  if (m.includes('password should be')) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if (m.includes('password should be') || m.includes('weak')) return 'A senha é fraca demais. Use pelo menos 8 caracteres, com letras e números.';
   if (m.includes('valid email') || m.includes('invalid email')) return 'Esse e-mail não parece válido.';
   if (m.includes('rate limit')) return 'Muitas tentativas. Espere um pouco e tente de novo.';
   if (m.includes('not confirmed')) return 'Confirme seu e-mail antes de entrar.';
@@ -794,9 +806,11 @@ function setErr(t) { const e = $('err'); if (e) e.textContent = t || ''; }
 
 async function doAuth() {
   const email = $('em').value.trim(), pw = $('pw').value;
+  const pw2 = $('pw2') ? $('pw2').value : null;
   setErr('');
   if (!email || !pw) return setErr('Preencha o e-mail e a senha.');
-  if (authMode === 'signup' && pw.length < 6) return setErr('A senha precisa ter pelo menos 6 caracteres.');
+  if (authMode === 'signup' && pw2 !== null && pw !== pw2) return setErr('As duas senhas não são iguais.');
+  if (authMode === 'signup' && (pw.length < 8 || !/[a-zA-Z]/.test(pw) || !/[0-9]/.test(pw))) return setErr('A senha é fraca demais. Use pelo menos 8 caracteres, com letras e números.');
   const btn = $('goBtn'); btn.disabled = true;
   try {
     const r = authMode === 'signup'
@@ -863,8 +877,9 @@ function viewNewPassword() {
     return;
   }
   view.innerHTML = `<div class="page narrow"><h1 class="kicker">Nova senha</h1>
-    <input class="q" id="np1" type="password" placeholder="Nova senha" autocomplete="new-password">
-    <input class="q" id="np2" type="password" placeholder="Repita a nova senha" autocomplete="new-password">
+    ${pwField('np1', 'Nova senha', 'new-password')}
+    ${pwField('np2', 'Repita a nova senha', 'new-password')}
+    <p class="hint">Use pelo menos 8 caracteres, com letras e números.</p>
     <div class="err" id="err"></div>
     <button class="btn" id="npBtn" data-act="newpw-save">Salvar nova senha</button></div>`;
 }
@@ -872,17 +887,20 @@ function viewNewPassword() {
 async function saveNewPassword() {
   const a = $('np1').value, b = $('np2').value;
   setErr('');
-  if (a.length < 6) return setErr('A senha precisa ter pelo menos 6 caracteres.');
+  if (a.length < 8 || !/[a-zA-Z]/.test(a) || !/[0-9]/.test(a)) return setErr('A senha é fraca demais. Use pelo menos 8 caracteres, com letras e números.');
   if (a !== b) return setErr('As duas senhas não são iguais.');
   $('npBtn').disabled = true;
   const { error } = await sb.auth.updateUser({ password: a });
   if ($('npBtn')) $('npBtn').disabled = false;
   if (error) {
     console.error(error);
-    const m = String(error.message || '').toLowerCase();
-    return setErr(m.includes('different') || m.includes('same')
-      ? 'Escolha uma senha diferente da anterior.'
-      : 'Não consegui salvar. Peça um novo link e tente de novo.');
+    const m = String(error.message || '').toLowerCase(), c = String(error.code || '');
+    if (c === 'weak_password' || m.includes('password should') || m.includes('weak') || m.includes('character')) return setErr('A senha é fraca demais. Use pelo menos 8 caracteres, com letras e números.');
+    if (c === 'same_password' || m.includes('different') || m.includes('same')) return setErr('Escolha uma senha diferente da anterior.');
+    if (c === 'reauthentication_needed' || c === 'session_not_found' || c === 'bad_jwt' || m.includes('session') || m.includes('jwt')) {
+      return setErr('O link venceu. Peça um novo link em Esqueci a senha e tente de novo.');
+    }
+    return setErr('Não consegui salvar (' + (c || error.status || 'erro') + '). Tente de novo ou peça um novo link.');
   }
   toast('Senha atualizada.');
   go('/');
@@ -942,7 +960,7 @@ function viewSettings(id) {
       <button class="btn red" id="delOpen" data-act="del-open">Excluir minha conta</button>
       <div id="delBox" hidden>
         <p class="warn">${pw ? 'Para confirmar, digite sua senha.' : 'Para confirmar, digite EXCLUIR.'}</p>
-        ${pw ? '<input class="q" id="delPw" type="password" placeholder="Sua senha" autocomplete="current-password">'
+        ${pw ? pwField('delPw', 'Sua senha', 'current-password')
              : '<input class="q" id="delWord" placeholder="EXCLUIR" autocomplete="off" autocapitalize="characters">'}
         <div class="err" id="delErr"></div>
         <button class="btn red" data-act="del-confirm">Excluir para sempre</button>
@@ -1586,6 +1604,16 @@ document.addEventListener('click', async e => {
       else route();
       break;
     }
+    case 'toggle-pw': {
+      const inp = $(el.dataset.target);
+      if (!inp) break;
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      el.setAttribute('aria-pressed', show ? 'true' : 'false');
+      el.setAttribute('aria-label', show ? 'Ocultar senha' : 'Mostrar senha');
+      el.innerHTML = show ? ICON.eyeOff : ICON.eye;
+      break;
+    }
     case 'like': await toggleLike(el); break;
     case 'reshuffle': window.scrollTo(0, 0); viewFeed(navId, feedState ? feedState.form : null); break;
     case 'prof-tab': {
@@ -1660,7 +1688,7 @@ document.addEventListener('keydown', e => {
     document.body.classList.remove('menu-open');
     const s = $('sheet'); if (s) s.hidden = true;
     closeReport();
-  } else if (e.key === 'Enter' && (e.target.id === 'em' || e.target.id === 'pw')) { e.preventDefault(); doAuth(); }
+  } else if (e.key === 'Enter' && (e.target.id === 'em' || e.target.id === 'pw' || e.target.id === 'pw2')) { e.preventDefault(); doAuth(); }
   else if (e.key === 'Enter' && (e.target.id === 'dn' || e.target.id === 'un' || e.target.id === 'bio')) { e.preventDefault(); doOnboard(); }
   else if (e.key === 'Enter' && (e.target.id === 'sn' || e.target.id === 'su' || e.target.id === 'sb')) { e.preventDefault(); saveProfile(); }
   else if (e.key === 'Enter' && (e.target.id === 'delPw' || e.target.id === 'delWord')) { e.preventDefault(); deleteAccount(); }
