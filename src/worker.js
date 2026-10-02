@@ -167,7 +167,22 @@ async function sitemap() {
   return new Response(xml, { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
 }
 
+// ---------- rotina que mantem o Supabase acordado ----------
+// O plano gratis do Supabase pausa projetos sem uso por 7 dias. Esta rotina roda
+// segunda e quinta (veja "triggers" no wrangler.jsonc) e faz uma consulta pequena.
+async function keepAlive() {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/poems?select=id&limit=1`, {
+    headers: { apikey: SUPABASE_KEY, Accept: 'application/json' }
+  });
+  console.log('keepalive supabase status:', r.status);
+  if (!r.ok) throw new Error('keepalive falhou: ' + r.status);
+}
+
 export default {
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(keepAlive());
+  },
+
   async fetch(request, env) {
     if (request.method !== 'GET' && request.method !== 'HEAD') return env.ASSETS.fetch(request);
     const path = new URL(request.url).pathname;
