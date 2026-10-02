@@ -141,6 +141,12 @@ textarea.q{resize:none;border:1.5px solid var(--ink);border-radius:12px;padding:
 .ssr p{text-align:center;margin:.4rem 0}
 .ssr a{color:inherit}
 .ssr-body{white-space:pre-wrap;margin-top:1.6rem}
+.dotwrap{position:relative;display:inline-flex}
+.dots3{width:34px;height:34px;background:transparent}
+.dots3 svg{width:18px;height:18px;fill:currentColor;stroke:none}
+.rowmenu{position:absolute;right:0;top:100%;z-index:30;min-width:15rem;padding:.3rem;border-radius:12px;background:var(--bg);border:1px solid color-mix(in srgb,var(--ink) 30%,transparent)}
+.rowmenu button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:.6rem .7rem;color:var(--ink);font-size:.95rem;cursor:pointer}
+.rowmenu button:hover{background:color-mix(in srgb,var(--ink) 10%,transparent)}
 .notice{max-width:28rem;margin:1.2rem auto 0;text-align:center;font-size:.9rem;opacity:.85}
 
 /* ---------- criar poema ---------- */
@@ -268,7 +274,8 @@ const ICON = {
   menu: '<svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
   user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>',
   x:    '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-  chev: '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>'
+  chev: '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>',
+  more: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>'
 };
 const SEAL_PATH = (() => {
   const amp = 0.09, R = 50 / (1 + amp), pts = [];
@@ -283,7 +290,7 @@ const SEAL_BOOK = (c) => '<path d="M0 -16 C-8 -21 -20 -21 -26 -17 V17 C-20 13 -8
 const SEAL_CHECK = '<path d="M-21 2 L-7 16 L21 -15" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>';
 function seal(kind, big) {
   const official = kind === 'oficial';
-  const color = official ? '#3897F0' : '#D4A017';
+  const color = official ? '#7F5AF0' : '#D4A017';
   const label = official ? 'Autor oficial' : 'Autor de domínio público';
   return `<svg class="seal${big ? ' big' : ''}" viewBox="-52 -52 104 104" role="img" aria-label="${label}"><title>${label}</title>`
     + `<path d="${SEAL_PATH}" fill="${color}"/>` + (official ? SEAL_CHECK : SEAL_BOOK(color)) + '</svg>';
@@ -349,7 +356,7 @@ function notFound(msg) {
 
 /* ================= dados do Supabase ================= */
 const SEL = 'id,short_id,title,body,form,color,created_at,user_id,submitted_by,sent_by_platform,'
-  + 'owner:profiles!user_id(username,display_name),'
+  + 'owner:profiles!user_id(username,display_name,badge),'
   + 'author:authors(slug,name,kind),'
   + 'submitter:profiles!submitted_by(username)';
 
@@ -375,7 +382,7 @@ async function loadMe() {
 /* ================= blocos de poema ================= */
 function bylineHTML(p) {
   if (p.author) return `<a class="p-by" href="/a/${enc(p.author.slug)}">por ${esc(p.author.name)}${seal(p.author.kind)}</a>`;
-  if (p.owner) return `<a class="p-by" href="/u/${enc(p.owner.username)}">por ${esc(p.owner.display_name || '@' + p.owner.username)}</a>`;
+  if (p.owner) return `<a class="p-by" href="/u/${enc(p.owner.username)}">por ${esc(p.owner.display_name || '@' + p.owner.username)}${p.owner.badge === 'oficial' ? seal('oficial') : ''}</a>`;
   return '';
 }
 function sentByHTML(p) {
@@ -510,7 +517,7 @@ async function runSearch(q) {
     authors = (await getAuthors()).filter(a => !raw || norm(a.name).includes(norm(raw)));
     const safe = raw.replace(/[%,()*\\"'.:]/g, ' ').trim();
     if (safe) {
-      const { data } = await sb.from('profiles').select('username,display_name')
+      const { data } = await sb.from('profiles').select('username,display_name,badge')
         .not('display_name', 'is', null)
         .or(`username.ilike.*${safe}*,display_name.ilike.*${safe}*`).limit(20);
       people = data || [];
@@ -526,7 +533,7 @@ async function runSearch(q) {
   let html = '';
   if (authors.length) html += '<h2 class="sub">Autores</h2><div class="list">' + authorRows(authors) + '</div>';
   if (people.length) html += '<h2 class="sub">Pessoas</h2><div class="list">'
-    + people.map(u => `<a href="/u/${enc(u.username)}"><span>${esc(u.display_name)}<br><small>@${esc(u.username)}</small></span></a>`).join('') + '</div>';
+    + people.map(u => `<a href="/u/${enc(u.username)}"><span>${esc(u.display_name)}${u.badge === 'oficial' ? seal('oficial') : ''}<br><small>@${esc(u.username)}</small></span></a>`).join('') + '</div>';
   if (found.length) html += '<h2 class="sub">Poemas</h2><div class="list">' + found.map(p => poemRow(p, words)).join('') + '</div>';
   $('res').innerHTML = html || '<p class="empty">Nada encontrado.</p>';
 }
@@ -547,7 +554,8 @@ async function viewProfile(id, uname, quiet) {
   const mine = me && me.id === prof.id;
   const n = poems.length;
   view.innerHTML = `<div class="page"><header class="ph">
-      <h1>${esc(prof.display_name)}</h1><div class="handle">@${esc(prof.username)}</div>
+      <h1>${esc(prof.display_name)}${prof.badge === 'oficial' ? seal('oficial', true) : ''}</h1><div class="handle">@${esc(prof.username)}</div>
+      ${prof.badge === 'oficial' ? '<div class="count">Autor oficial</div>' : ''}
       ${prof.bio ? `<p class="bio">${esc(prof.bio)}</p>` : ''}
       <div class="count">${n} ${n === 1 ? 'poema' : 'poemas'}</div>
       ${mine ? `<p style="margin:1.4rem 0 0"><button class="chip" data-act="toggle-pal">Cores da página</button></p>
@@ -776,7 +784,7 @@ async function storyBlob(p) {
   }
   g.textAlign = 'center'; g.font = `400 44px ${fam}`;
   try { g.letterSpacing = '10px'; } catch (e) {}
-  g.fillText('soneto', W / 2, H - 170);
+  g.fillText('soneto.me', W / 2, H - 170);
   return new Promise(res => cv.toBlob(res, 'image/png'));
 }
 async function doShareImage(p) {
@@ -863,15 +871,21 @@ async function modReportsHTML() {
   return head + (cards || `<p class="empty">${modResolved ? 'Nenhuma denúncia resolvida.' : 'Nenhuma denúncia aberta. Tudo em ordem.'}</p>`);
 }
 async function modAccountsList(q) {
-  let query = sb.from('profiles').select('id,username,display_name,role,created_at')
+  let query = sb.from('profiles').select('id,username,display_name,role,badge,created_at')
     .not('display_name', 'is', null).order('created_at', { ascending: false }).limit(40);
   const safe = (q || '').replace(/[%,()*\\"'.:]/g, ' ').trim();
   if (safe) query = query.or(`username.ilike.*${safe}*,display_name.ilike.*${safe}*`);
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []).map(u => `<div class="mrow"><span><strong>${esc(u.display_name)}</strong><br><small>@${esc(u.username)}</small></span>`
+  return (data || []).map(u => `<div class="mrow"><span><strong>${esc(u.display_name)}</strong>${u.badge === 'oficial' ? seal('oficial') : ''}<br><small>@${esc(u.username)}</small></span>`
     + `<span class="roles">${['user', 'moderator', 'admin'].map(r =>
-      `<button class="chip${u.role === r ? ' on' : ''}" data-act="mod-role" data-id="${esc(u.id)}" data-role="${r}">${ROLES[r]}</button>`).join('')}</span></div>`).join('')
+      `<button class="chip${u.role === r ? ' on' : ''}" data-act="mod-role" data-id="${esc(u.id)}" data-role="${r}">${ROLES[r]}</button>`).join('')}`
+    + `<span class="dotwrap"><button class="iconbtn dots3" data-act="mod-menu" data-id="${esc(u.id)}" aria-label="Mais opções">${ICON.more}</button>`
+    + `<div class="rowmenu" id="rm-${esc(u.id)}" hidden>`
+    + (u.badge === 'oficial'
+      ? `<button data-act="mod-badge" data-id="${esc(u.id)}" data-badge="none">Remover selo de autor oficial</button>`
+      : `<button data-act="mod-badge" data-id="${esc(u.id)}" data-badge="oficial">Tornar autor oficial</button>`)
+    + `</div></span></span></div>`).join('')
     || '<p class="empty">Ninguém encontrado.</p>';
 }
 async function modAccountsHTML() {
@@ -1105,6 +1119,7 @@ async function route() {
 
 /* ================= eventos ================= */
 document.addEventListener('click', async e => {
+  if (!e.target.closest('.dotwrap')) document.querySelectorAll('.rowmenu').forEach(m => { m.hidden = true; });
   const el = e.target.closest('[data-act]');
   if (!el) return;
   const act = el.dataset.act, id = el.dataset.id;
@@ -1172,6 +1187,24 @@ document.addEventListener('click', async e => {
       if (location.pathname.startsWith('/p/')) go('/');
       else if (location.pathname === '/moderar') loadModTab();
       else route();
+      break;
+    }
+    case 'mod-menu': {
+      const m = $('rm-' + id);
+      const open = m && m.hidden;
+      document.querySelectorAll('.rowmenu').forEach(x => { x.hidden = true; });
+      if (m && open) m.hidden = false;
+      break;
+    }
+    case 'mod-badge': {
+      const badge = el.dataset.badge === 'none' ? null : el.dataset.badge;
+      const msg = badge ? 'Dar o selo de autor oficial a esta conta?' : 'Remover o selo de autor oficial desta conta?';
+      if (!confirm(msg)) break;
+      const { error } = await sb.rpc('admin_set_badge', { p_user_id: id, p_badge: badge });
+      if (error) { fail(modErr(error), error); break; }
+      toast(badge ? 'Selo de autor oficial concedido.' : 'Selo removido.');
+      if (me && id === me.id) await loadMe();
+      loadModTab();
       break;
     }
     case 'mod-role': {
