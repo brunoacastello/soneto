@@ -1,0 +1,23 @@
+name: Manter Supabase ativo
+
+# Roda toda segunda e quinta, ao meio-dia (horario UTC), e tambem quando voce
+# clicar em "Run workflow" na aba Actions (serve para testar na hora).
+
+on:
+  schedule:
+    - cron: "0 12 * * 1,4"
+  workflow_dispatch:
+
+jobs:
+  consulta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: https://prmhbjubcdbxnuxxaxgy.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_86pn0hWnXJOlUslDUDb2_w_YA5vPQud
+    steps:
+      - name: Consulta leve a tabela de poemas
+        run: |
+          curl --fail --silent --show-error --retry 3 --retry-delay 10 \
+            "$SUPABASE_URL/rest/v1/poems?select=id&limit=1" \
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY"
